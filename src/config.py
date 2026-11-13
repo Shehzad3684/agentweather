@@ -39,7 +39,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 
 GH_PAT = os.getenv("GH_PAT", "")
-GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "")
+GITHUB_REPOSITORY = os.getenv("GITHUB_REPOSITORY", "Shehzad3684/agentweather")
 
 # -----------------------------------------------------------------------------
 # API Endpoints
