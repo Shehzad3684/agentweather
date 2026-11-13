@@ -1,0 +1,7 @@
+{
+  "total_rows": 5768,
+  "total_columns": 76,
+  "feature_missing_count_post_imputation": 0,
+  "target_missing_count_newest_24h": 192,
+  "imputation_strategy": "1-3h forward fill + linear interpolation; >=4h diurnal 7-day hourly average"
+}

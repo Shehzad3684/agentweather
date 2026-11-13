@@ -1,0 +1,202 @@
+{
+  "temp_c": {
+    "count": 5768,
+    "mean": 25.96,
+    "std": 5.62,
+    "min": 11.2,
+    "25%": 22.4,
+    "50%": 26.1,
+    "75%": 30.0,
+    "max": 41.7,
+    "hazard_threshold": {
+      "min": 0.0,
+      "max": 40.0,
+      "unit": "\u00b0C",
+      "desc": "Extreme Temperature (< 0\u00b0C Freezing or > 40\u00b0C Extreme Heat)"
+    }
+  },
+  "humidity_pct": {
+    "count": 5768,
+    "mean": 61.66,
+    "std": 20.34,
+    "min": 9.0,
+    "25%": 47.0,
+    "50%": 63.0,
+    "75%": 77.0,
+    "max": 100.0,
+    "hazard_threshold": {
+      "min": 20.0,
+      "max": 85.0,
+      "unit": "%",
+      "desc": "Extreme Humidity (< 20% or > 85%)"
+    }
+  },
+  "pressure_hpa": {
+    "count": 5768,
+    "mean": 948.58,
+    "std": 5.01,
+    "min": 937.5,
+    "25%": 944.6,
+    "50%": 947.8,
+    "75%": 952.2,
+    "max": 961.8,
+    "hazard_threshold": "None"
+  },
+  "wind_speed": {
+    "count": 5768,
+    "mean": 6.25,
+    "std": 3.57,
+    "min": 0.2,
+    "25%": 3.6,
+    "50%": 5.7,
+    "75%": 8.2,
+    "max": 32.7,
+    "hazard_threshold": {
+      "min": null,
+      "max": 50.0,
+      "unit": "km/h",
+      "desc": "Gale / High Wind (> 50 km/h)"
+    }
+  },
+  "wind_dir": {
+    "count": 5768,
+    "mean": 176.42,
+    "std": 116.72,
+    "min": 1.0,
+    "25%": 71.0,
+    "50%": 142.0,
+    "75%": 299.0,
+    "max": 360.0,
+    "hazard_threshold": "None"
+  },
+  "precip_mm": {
+    "count": 5768,
+    "mean": 0.12,
+    "std": 0.58,
+    "min": 0.0,
+    "25%": 0.0,
+    "50%": 0.0,
+    "75%": 0.0,
+    "max": 10.7,
+    "hazard_threshold": {
+      "min": null,
+      "max": 20.0,
+      "unit": "mm",
+      "desc": "Heavy Precipitation (> 20 mm/h)"
+    }
+  },
+  "rain_prob": {
+    "count": 5768,
+    "mean": 13.3,
+    "std": 21.09,
+    "min": 0.0,
+    "25%": 5.0,
+    "50%": 5.0,
+    "75%": 5.0,
+    "max": 100.0,
+    "hazard_threshold": {
+      "min": null,
+      "max": 80.0,
+      "unit": "%",
+      "desc": "High Rain Probability (> 80%)"
+    }
+  },
+  "uv_index": {
+    "count": 5768,
+    "mean": 2.2,
+    "std": 2.9,
+    "min": 0.0,
+    "25%": 0.0,
+    "50%": 0.0,
+    "75%": 4.4,
+    "max": 9.0,
+    "hazard_threshold": {
+      "min": null,
+      "max": 8.0,
+      "unit": "index",
+      "desc": "Very High UV Hazard (>= 8)"
+    }
+  },
+  "aqi": {
+    "count": 5768,
+    "mean": 109.69,
+    "std": 31.07,
+    "min": 58.0,
+    "25%": 86.0,
+    "50%": 104.0,
+    "75%": 133.0,
+    "max": 210.0,
+    "hazard_threshold": {
+      "min": null,
+      "max": 150.0,
+      "unit": "AQI",
+      "desc": "Unhealthy Air Quality (US EPA > 150)"
+    }
+  },
+  "pm2_5": {
+    "count": 5768,
+    "mean": 35.0,
+    "std": 17.32,
+    "min": 3.4,
+    "25%": 21.4,
+    "50%": 32.4,
+    "75%": 46.12,
+    "max": 106.6,
+    "hazard_threshold": "None"
+  },
+  "pm10": {
+    "count": 5768,
+    "mean": 48.63,
+    "std": 27.62,
+    "min": 4.8,
+    "25%": 29.0,
+    "50%": 43.25,
+    "75%": 61.7,
+    "max": 338.1,
+    "hazard_threshold": "None"
+  },
+  "no2": {
+    "count": 5768,
+    "mean": 36.74,
+    "std": 31.87,
+    "min": 0.0,
+    "25%": 10.2,
+    "50%": 26.7,
+    "75%": 54.9,
+    "max": 165.1,
+    "hazard_threshold": "None"
+  },
+  "so2": {
+    "count": 5768,
+    "mean": 10.14,
+    "std": 4.8,
+    "min": 0.0,
+    "25%": 6.4,
+    "50%": 9.5,
+    "75%": 13.2,
+    "max": 37.7,
+    "hazard_threshold": "None"
+  },
+  "co": {
+    "count": 5768,
+    "mean": 864.12,
+    "std": 599.65,
+    "min": 100.0,
+    "25%": 449.0,
+    "50%": 671.5,
+    "75%": 1085.0,
+    "max": 4255.0,
+    "hazard_threshold": "None"
+  },
+  "o3": {
+    "count": 5768,
+    "mean": 88.43,
+    "std": 63.06,
+    "min": 0.0,
+    "25%": 34.0,
+    "50%": 78.0,
+    "75%": 143.0,
+    "max": 243.0,
+    "hazard_threshold": "None"
+  }
+}

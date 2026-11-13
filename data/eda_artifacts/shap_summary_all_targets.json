@@ -1,0 +1,82 @@
+{
+  "aqi": {
+    "top_features": [
+      "aqi",
+      "month",
+      "uv_index",
+      "pm2_5",
+      "month_sin",
+      "humidity_pct_roll_mean_24h"
+    ]
+  },
+  "temp_c": {
+    "top_features": [
+      "temp_c",
+      "o3",
+      "temp_c_roll_mean_6h",
+      "month_cos",
+      "temp_c_roll_mean_24h",
+      "hour_sin"
+    ]
+  },
+  "precip_mm": {
+    "top_features": [
+      "co",
+      "precip_mm_roll_mean_24h",
+      "temp_c_roll_mean_24h",
+      "humidity_pct",
+      "cloud_cover",
+      "aqi_roll_std_24h"
+    ]
+  },
+  "rain_prob": {
+    "top_features": [
+      "humidity_pct_roll_mean_12h",
+      "cloud_cover",
+      "co",
+      "precip_mm",
+      "temp_c_roll_mean_24h",
+      "precip_mm_roll_std_12h"
+    ]
+  },
+  "humidity_pct": {
+    "top_features": [
+      "humidity_pct",
+      "humidity_pct_roll_mean_6h",
+      "month",
+      "o3",
+      "temp_c_roll_mean_24h",
+      "hour_sin"
+    ]
+  },
+  "uv_index": {
+    "top_features": [
+      "hour_cos",
+      "uv_index",
+      "month",
+      "pressure_hpa_roll_std_12h",
+      "pressure_hpa_roll_std_24h",
+      "wind_sin"
+    ]
+  },
+  "wind_speed": {
+    "top_features": [
+      "temp_c_roll_mean_24h",
+      "humidity_pct_roll_mean_24h",
+      "humidity_pct_roll_mean_12h",
+      "wind_speed",
+      "month_sin",
+      "humidity_pct_roll_std_24h"
+    ]
+  },
+  "wind_dir": {
+    "top_features": [
+      "aqi_roll_mean_24h",
+      "pressure_hpa_roll_mean_12h",
+      "wind_dir",
+      "wind_sin",
+      "temp_c_roll_mean_24h",
+      "precip_mm_roll_std_24h"
+    ]
+  }
+}

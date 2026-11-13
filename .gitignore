@@ -1,0 +1,41 @@
+# Python environment
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Environment Variables & Secrets
+.env
+*.env.local
+
+# Local Data and Model Binaries
+*.csv
+*.parquet
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.onnx
+models/
+data/*.csv
+data/*.parquet
+!data/eda_artifacts/*.json
+!data/eda_artifacts/*.png
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+agent_logs/
