@@ -7,6 +7,7 @@ features and 24-hour ahead targets, saves locally, and populates Hopsworks Featu
 
 import os
 import sys
+import time
 import logging
 import datetime
 from pathlib import Path
@@ -69,9 +70,18 @@ def fetch_openmeteo_historical_weather(
         ],
         "timezone": "UTC",
     }
-    res = requests.get(OPEN_METEO_HISTORICAL_URL, params=params, timeout=30)
-    res.raise_for_status()
-    data = res.json().get("hourly", {})
+    data = {}
+    for attempt in range(4):
+        try:
+            res = requests.get(OPEN_METEO_HISTORICAL_URL, params=params, timeout=35)
+            res.raise_for_status()
+            data = res.json().get("hourly", {})
+            break
+        except Exception as exc:
+            logger.warning(f"Attempt {attempt + 1} to download historical weather failed: {exc}")
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
 
     df = pd.DataFrame({
         "timestamp": pd.to_datetime(data["time"], utc=True),
@@ -121,9 +131,18 @@ def fetch_openmeteo_historical_air_quality(
         ],
         "timezone": "UTC",
     }
-    res = requests.get(OPEN_METEO_AIR_QUALITY_URL, params=params, timeout=30)
-    res.raise_for_status()
-    data = res.json().get("hourly", {})
+    data = {}
+    for attempt in range(4):
+        try:
+            res = requests.get(OPEN_METEO_AIR_QUALITY_URL, params=params, timeout=35)
+            res.raise_for_status()
+            data = res.json().get("hourly", {})
+            break
+        except Exception as exc:
+            logger.warning(f"Attempt {attempt + 1} to download historical air quality failed: {exc}")
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
 
     df = pd.DataFrame({
         "timestamp": pd.to_datetime(data["time"], utc=True),
@@ -158,9 +177,19 @@ def fetch_recent_days_openmeteo(
         "hourly": "temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,precipitation_probability,uv_index,cloud_cover",
         "timezone": "UTC",
     }
-    w_res = requests.get(w_url, params=w_params, timeout=20)
-    w_res.raise_for_status()
-    w_data = w_res.json().get("hourly", {})
+    w_data = {}
+    for attempt in range(4):
+        try:
+            w_res = requests.get(w_url, params=w_params, timeout=25)
+            w_res.raise_for_status()
+            w_data = w_res.json().get("hourly", {})
+            break
+        except Exception as exc:
+            logger.warning(f"Attempt {attempt + 1} to fetch recent weather failed: {exc}")
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
+
     df_w = pd.DataFrame({
         "timestamp": pd.to_datetime(w_data["time"], utc=True),
         "temp_c": w_data["temperature_2m"],
@@ -183,9 +212,18 @@ def fetch_recent_days_openmeteo(
         "hourly": "pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide,us_aqi",
         "timezone": "UTC",
     }
-    aq_res = requests.get(aq_url, params=aq_params, timeout=20)
-    aq_res.raise_for_status()
-    aq_data = aq_res.json().get("hourly", {})
+    aq_data = {}
+    for attempt in range(4):
+        try:
+            aq_res = requests.get(aq_url, params=aq_params, timeout=25)
+            aq_res.raise_for_status()
+            aq_data = aq_res.json().get("hourly", {})
+            break
+        except Exception as exc:
+            logger.warning(f"Attempt {attempt + 1} to fetch recent air quality failed: {exc}")
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
     df_aq = pd.DataFrame({
         "timestamp": pd.to_datetime(aq_data["time"], utc=True),
         "aqi": aq_data.get("us_aqi", [50.0] * len(aq_data["time"])),

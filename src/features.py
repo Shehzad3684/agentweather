@@ -6,6 +6,7 @@ gap imputation, circular & rolling feature engineering, and Hopsworks storage.
 
 import os
 import sys
+import time
 import logging
 import datetime
 from pathlib import Path
@@ -162,7 +163,7 @@ def fetch_aqicn_current(lat: float = CITY_LAT, lon: float = CITY_LON, api_key: s
 def fetch_openmeteo_live_fallback(lat: float = CITY_LAT, lon: float = CITY_LON) -> Dict[str, Any]:
     """
     Reliable OpenMeteo fallback for live weather and air quality without requiring an API key.
-    Ensures the live ingestion pipeline never fails due to third-party rate limits.
+    Ensures the live ingestion pipeline never fails due to third-party rate limits or timeouts.
     """
     logger.info("Querying OpenMeteo for live meteorological and air quality observation...")
     weather_url = OPEN_METEO_FORECAST_URL
@@ -173,8 +174,19 @@ def fetch_openmeteo_live_fallback(lat: float = CITY_LAT, lon: float = CITY_LON) 
         "hourly": "precipitation_probability",
         "timezone": "UTC",
     }
-    w_res = requests.get(weather_url, params=w_params, timeout=10)
-    w_data = w_res.json().get("current", {})
+    w_data = {}
+    hourly_probs = []
+    for attempt in range(3):
+        try:
+            w_res = requests.get(weather_url, params=w_params, timeout=12)
+            if w_res.status_code == 200:
+                payload = w_res.json()
+                w_data = payload.get("current", {})
+                hourly_probs = payload.get("hourly", {}).get("precipitation_probability", [])
+                break
+        except Exception as exc:
+            logger.warning(f"OpenMeteo weather fetch attempt {attempt + 1} error: {exc}")
+            time.sleep(1)
 
     # Air quality
     aq_url = OPEN_METEO_AIR_QUALITY_URL
@@ -184,26 +196,33 @@ def fetch_openmeteo_live_fallback(lat: float = CITY_LAT, lon: float = CITY_LON) 
         "current": "us_aqi,pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide",
         "timezone": "UTC",
     }
-    aq_res = requests.get(aq_url, params=aq_params, timeout=10)
-    aq_data = aq_res.json().get("current", {})
+    aq_data = {}
+    for attempt in range(3):
+        try:
+            aq_res = requests.get(aq_url, params=aq_params, timeout=12)
+            if aq_res.status_code == 200:
+                aq_data = aq_res.json().get("current", {})
+                break
+        except Exception as exc:
+            logger.warning(f"OpenMeteo air quality fetch attempt {attempt + 1} error: {exc}")
+            time.sleep(1)
 
     now_utc = datetime.datetime.now(datetime.timezone.utc).replace(minute=0, second=0, microsecond=0)
 
     # Estimate rain prob
     rain_prob = 15.0
-    try:
-        hourly_probs = w_res.json().get("hourly", {}).get("precipitation_probability", [])
-        if hourly_probs:
+    if hourly_probs:
+        try:
             rain_prob = float(hourly_probs[0])
-    except Exception:
-        pass
+        except Exception:
+            pass
 
     return {
         "timestamp": now_utc,
-        "temp_c": float(w_data.get("temperature_2m", 15.0)),
-        "humidity_pct": float(w_data.get("relative_humidity_2m", 60.0)),
+        "temp_c": float(w_data.get("temperature_2m", 22.0)),
+        "humidity_pct": float(w_data.get("relative_humidity_2m", 50.0)),
         "pressure_hpa": float(w_data.get("surface_pressure", 1013.25)),
-        "wind_speed": float(w_data.get("wind_speed_10m", 10.0)),
+        "wind_speed": float(w_data.get("wind_speed_10m", 8.0)),
         "wind_dir": float(w_data.get("wind_direction_10m", 180.0)),
         "precip_mm": float(w_data.get("precipitation", 0.0)),
         "rain_prob": float(rain_prob),
