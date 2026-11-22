@@ -45,15 +45,15 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-    --bg-canvas:             #090D16;
-    --bg-surface:            #0F1623;
-    --bg-elevated:           #161F30;
-    --bg-sidebar:            #0B101B;
-    --border-subtle:         #1E293B;
-    --border-strong:         #2E3D56;
-    --text-primary:          #F8FAFC;
-    --text-secondary:        #94A3B8;
-    --text-muted:            #64748B;
+    --bg-canvas:             #FFFFFF;
+    --bg-surface:            #FFFFFF;
+    --bg-elevated:           #F6F6F3;
+    --bg-sidebar:            #F6F6F3;
+    --border-subtle:         #E7E7E2;
+    --border-strong:         #CCCCC5;
+    --text-primary:          #111111;
+    --text-secondary:        #4D4D49;
+    --text-muted:            #777772;
     --accent-primary:        #38BDF8;
     --accent-solid:          #0284C7;
     --accent-solid-hover:    #0369A1;
@@ -652,6 +652,189 @@ header[data-testid="stHeader"] {
     font-size: 11.5px;
     color: var(--text-muted);
 }
+
+/* Telemyr-inspired editorial interface */
+[data-testid="stSidebar"] {
+    width: 112px !important;
+    min-width: 112px !important;
+    background: #F8F8F5 !important;
+    border-right: 1px solid #E9E9E4 !important;
+}
+
+[data-testid="stSidebar"] > div:first-child {
+    width: 112px !important;
+    padding: 10px 8px !important;
+}
+
+[data-testid="stSidebar"] .block-container,
+[data-testid="stSidebarUserContent"] {
+    padding: 0 !important;
+}
+
+[data-testid="stSidebar"] .sb-brand-wrap {
+    border-bottom: 0;
+    margin: 0 0 10px;
+    padding: 4px 2px 10px;
+}
+
+[data-testid="stSidebar"] .sb-brand-row {
+    justify-content: center;
+}
+
+[data-testid="stSidebar"] .sb-brand-title {
+    width: 94px;
+    height: 94px;
+    border: 1px solid #E3E3DE;
+    border-radius: 4px;
+    justify-content: center;
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #FFF6E8 0%, #F7CFCB 62%, #AEBEF8 100%);
+}
+
+[data-testid="stSidebar"] .sb-live-dot,
+[data-testid="stSidebar"] .sb-live-pill,
+[data-testid="stSidebar"] .sb-brand-sub,
+[data-testid="stSidebar"] .sb-station-box,
+[data-testid="stSidebar"] .sb-divider,
+[data-testid="stSidebar"] .sb-kicker,
+[data-testid="stSidebar"] .sb-node-row,
+[data-testid="stSidebar"] .sb-stack-footer {
+    display: none !important;
+}
+
+[data-testid="stSidebar"] .stButton button {
+    height: 94px !important;
+    min-height: 94px !important;
+    border-radius: 4px !important;
+    border: 1px solid #E3E3DE !important;
+    background: #FFFFFF !important;
+    color: #111111 !important;
+    white-space: normal !important;
+    font-size: 12px !important;
+}
+
+[data-testid="stSidebar"] .stButton button:hover {
+    background: #F2F2ED !important;
+    border-color: #111111 !important;
+}
+
+html, body, [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"] {
+    background: #FFFFFF !important;
+}
+
+[data-testid="stHeader"] {
+    height: 0 !important;
+    min-height: 0 !important;
+    display: none !important;
+}
+
+.block-container {
+    max-width: 1320px !important;
+    padding-left: 34px !important;
+    padding-right: 34px !important;
+}
+
+.top-header-panel {
+    background: #FFFFFF;
+    border: 0;
+    border-bottom: 1px solid #E7E7E2;
+    border-radius: 0;
+    padding: 20px 0 18px;
+}
+
+.header-location-tag {
+    color: #777772;
+    letter-spacing: 0.12em;
+}
+
+.header-main-title {
+    font-size: 34px;
+    letter-spacing: -0.04em;
+}
+
+.header-pill,
+.telemetry-chip {
+    background: #F7F7F3;
+    border: 1px solid #E7E7E2;
+    border-radius: 999px;
+    color: #4D4D49;
+}
+
+.section-label {
+    color: #777772;
+    letter-spacing: 0.12em;
+}
+
+.metric-tile,
+.surface-panel,
+.chart-panel,
+.drift-panel,
+.audit-panel,
+.eda-panel,
+.shap-panel,
+.registry-panel {
+    background: #FFFFFF !important;
+    border: 1px solid #E7E7E2 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+.metric-tile:hover {
+    background: #FAFAF7 !important;
+    border-color: #CACAC3 !important;
+}
+
+.metric-val {
+    font-size: 38px;
+    letter-spacing: -0.055em;
+}
+
+.metric-progress-track {
+    background: #EFEFEA !important;
+}
+
+.panel-header,
+.registry-bar {
+    border-bottom: 1px solid #E7E7E2;
+}
+
+.briefing-summary-box,
+.briefing-chip,
+.telemetry-chip,
+.header-pill {
+    background: #F7F7F3 !important;
+}
+
+.briefing-lead,
+.panel-title,
+.metric-tile-label,
+.table-header,
+.table-row {
+    color: var(--text-primary) !important;
+}
+
+div[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E7E7E2;
+    border-radius: 8px;
+}
+
+.streamlit-expanderHeader {
+    background: #FFFFFF !important;
+    border: 1px solid #E7E7E2 !important;
+    color: #111111 !important;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid #E7E7E2;
+    border-radius: 8px;
+}
+
+.app-footer {
+    border-top: 1px solid #E7E7E2;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -909,7 +1092,7 @@ with st.sidebar:
         <div class="sb-brand-row">
             <span class="sb-brand-title">
                 <span class="sb-live-dot"></span>
-                <span>AgentWeather</span>
+                <span>Agent<br>Weather</span>
             </span>
             <span class="sb-live-pill">ONLINE</span>
         </div>
@@ -1208,19 +1391,19 @@ if hist_df is not None and not hist_df.empty:
         fig.update_layout(
             margin=dict(l=12, r=12, t=36, b=12),
             height=340,
-            template="plotly_dark",
-            paper_bgcolor="#0F1623",
-            plot_bgcolor="#0F1623",
+            template="plotly_white",
+            paper_bgcolor="#FFFFFF",
+            plot_bgcolor="#FFFFFF",
             hovermode="x unified",
             hoverlabel=dict(
-                bgcolor="#161F30",
-                bordercolor="#2E3D56",
-                font=dict(family="JetBrains Mono, monospace", size=11.5, color="#F8FAFC"),
+                bgcolor="#FFFFFF",
+                bordercolor="#D5D5CF",
+                font=dict(family="JetBrains Mono, monospace", size=11.5, color="#111111"),
             ),
-            font=dict(family="Inter, sans-serif", color="#F8FAFC", size=12),
+            font=dict(family="Inter, sans-serif", color="#111111", size=12),
             title=dict(
                 text=f"{metric_title} ({lookback_hours}h Telemetry and 24h Projection)",
-                font=dict(size=13, color="#F8FAFC", weight=600),
+                font=dict(size=13, color="#111111", weight=600),
                 x=0.0,
                 xanchor="left",
             ),
