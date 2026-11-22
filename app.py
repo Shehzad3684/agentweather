@@ -33,49 +33,48 @@ from src.agents import run_agent_pipeline
 
 # ─── Streamlit Page Configuration ─────────────────────────────────────────────
 st.set_page_config(
-    page_title=f"AgentWeather • {CITY_NAME}",
-    page_icon="🌤️",
+    page_title=f"AgentWeather : {CITY_NAME}",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 
-# ─── Design Tokens & Stylesheet (Tomorrow.io / Linear / Vercel Aesthetic) ─────
+# ─── Design Tokens & Dark Mode Stylesheet (Tomorrow.io / Linear Aesthetic) ───
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* ── Light Scientific Console Design Tokens ── */
+/* ── Dark Scientific Console Design Tokens ── */
 :root {
-    --bg-page:        #F8FAFC;
-    --bg-surface:     #FFFFFF;
-    --bg-subtle:      #F1F5F9;
-    --border-light:   #E2E8F0;
-    --border-dark:    #CBD5E1;
-    --text-primary:   #0F172A;
-    --text-secondary: #475569;
-    --text-muted:     #94A3B8;
-    --brand-primary:  #0284C7;
-    --brand-hover:    #0369A1;
-    --brand-soft:     #E0F2FE;
-    --status-emerald: #16A34A;
-    --status-emerald-soft: #F0FDF4;
-    --status-emerald-border: #BBF7D0;
-    --status-amber:   #D97706;
-    --status-amber-soft: #FFFBEB;
-    --status-amber-border: #FDE68A;
-    --status-red:     #DC2626;
-    --status-red-soft: #FEF2F2;
-    --status-red-border: #FECACA;
-    --radius-card:    10px;
-    --radius-inner:   8px;
-    --radius-pill:    6px;
-    --shadow-sm:      0 1px 3px 0 rgba(15, 23, 42, 0.06);
-    --shadow-md:      0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+    --bg-page:               #0B0F17;
+    --bg-surface:            #111827;
+    --bg-subtle:             #1F2937;
+    --border-light:          #1F2937;
+    --border-dark:           #374151;
+    --text-primary:          #F9FAFB;
+    --text-secondary:        #9CA3AF;
+    --text-muted:            #6B7280;
+    --brand-primary:         #38BDF8;
+    --brand-hover:           #0EA5E9;
+    --brand-soft:            rgba(56, 189, 248, 0.12);
+    --status-emerald:        #34D399;
+    --status-emerald-soft:   rgba(52, 211, 153, 0.12);
+    --status-emerald-border: rgba(52, 211, 153, 0.28);
+    --status-amber:          #FBBF24;
+    --status-amber-soft:     rgba(251, 191, 36, 0.12);
+    --status-amber-border:   rgba(251, 191, 36, 0.28);
+    --status-red:            #F87171;
+    --status-red-soft:       rgba(248, 113, 113, 0.12);
+    --status-red-border:     rgba(248, 113, 113, 0.28);
+    --radius-card:           10px;
+    --radius-inner:          8px;
+    --radius-pill:           6px;
+    --shadow-sm:             0 1px 3px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md:             0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* ── Global Page Reset ── */
-html, body, [data-testid="stAppViewContainer"] {
+html, body, [data-testid="stAppViewContainer"], [data-testid="stAppViewBlockContainer"] {
     background-color: var(--bg-page) !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     color: var(--text-primary) !important;
@@ -83,26 +82,26 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 
 header[data-testid="stHeader"] {
-    background: rgba(248, 250, 252, 0.88) !important;
-    backdrop-filter: blur(8px) !important;
+    background: rgba(11, 15, 23, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
     border-bottom: 1px solid var(--border-light) !important;
 }
 
-/* ── Sidebar (Clean & High-Signal) ── */
+/* ── Sidebar (Dark Console) ── */
 [data-testid="stSidebar"] {
-    background-color: #FFFFFF !important;
-    border-right: 1px solid var(--border-light) !important;
+    background-color: #0F172A !important;
+    border-right: 1px solid #1E293B !important;
 }
 [data-testid="stSidebar"] * {
-    color: var(--text-secondary);
+    color: #94A3B8;
 }
 [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-    color: var(--text-primary) !important;
+    color: #F8FAFC !important;
     font-weight: 600 !important;
     letter-spacing: -0.01em;
 }
 
-/* ── Primary Sidebar Action Button (High-Contrast Fix) ── */
+/* ── Primary Sidebar Action Button (High-Contrast Dark Mode) ── */
 [data-testid="stSidebar"] [data-testid="stBaseButton-primary"],
 [data-testid="stSidebar"] [data-testid="stBaseButton-secondary"],
 [data-testid="stSidebar"] button[kind="primary"],
@@ -112,12 +111,12 @@ header[data-testid="stHeader"] {
     background-color: #0284C7 !important;
     background: #0284C7 !important;
     color: #FFFFFF !important;
-    border: 1px solid #0369A1 !important;
+    border: 1px solid #0EA5E9 !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
     font-size: 13.5px !important;
     padding: 10px 16px !important;
-    box-shadow: 0 1px 3px rgba(2, 132, 199, 0.3) !important;
+    box-shadow: 0 1px 4px rgba(2, 132, 199, 0.4) !important;
     transition: all 0.15s ease-in-out !important;
     width: 100% !important;
     cursor: pointer !important;
@@ -139,8 +138,8 @@ header[data-testid="stHeader"] {
 [data-testid="stSidebar"] .stButton button:hover {
     background-color: #0369A1 !important;
     background: #0369A1 !important;
-    border-color: #075985 !important;
-    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4) !important;
+    border-color: #38BDF8 !important;
+    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3) !important;
 }
 [data-testid="stSidebar"] [data-testid="stBaseButton-primary"]:hover *,
 [data-testid="stSidebar"] [data-testid="stBaseButton-secondary"]:hover *,
@@ -151,7 +150,7 @@ header[data-testid="stHeader"] {
 
 /* ── Top Hero Header Bar ── */
 .hero-header-bar {
-    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+    background: linear-gradient(180deg, #111827 0%, #0F172A 100%);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-card);
     padding: 18px 22px;
@@ -196,12 +195,12 @@ header[data-testid="stHeader"] {
     font-size: 12px;
     font-weight: 500;
     font-family: 'JetBrains Mono', monospace;
-    background: #FFFFFF;
+    background: #111827;
     border: 1px solid var(--border-light);
     color: var(--text-secondary);
 }
 
-/* Weather Snapshot Strip in Hero */
+/* Atmospheric Snapshot Strip in Hero */
 .hero-snapshot-strip {
     display: flex;
     gap: 8px;
@@ -210,7 +209,7 @@ header[data-testid="stHeader"] {
     width: 100%;
     padding-top: 12px;
     margin-top: 12px;
-    border-top: 1px solid var(--bg-subtle);
+    border-top: 1px solid var(--border-light);
     font-size: 12px;
     color: var(--text-secondary);
 }
@@ -218,19 +217,21 @@ header[data-testid="stHeader"] {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 10px;
+    padding: 4px 11px;
     background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-pill);
     font-family: 'JetBrains Mono', monospace;
     font-size: 11.5px;
+    color: #D1D5DB;
 }
 
 /* ── Section Titles ── */
 .section-headline {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: var(--text-secondary);
     margin: 22px 0 12px 2px;
     display: flex;
@@ -274,9 +275,6 @@ header[data-testid="stHeader"] {
     align-items: center;
     gap: 6px;
 }
-.metric-icon {
-    font-size: 13px;
-}
 .metric-name {
     font-size: 11.5px;
     font-weight: 600;
@@ -287,17 +285,11 @@ header[data-testid="stHeader"] {
 .metric-status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
     font-size: 11px;
     font-weight: 600;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: var(--radius-pill);
     border: 1px solid;
-}
-.metric-status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
 }
 .metric-value-row {
     margin: 4px 0 2px;
@@ -321,23 +313,23 @@ header[data-testid="stHeader"] {
     font-family: 'JetBrains Mono', monospace;
 }
 
-/* Micro Gauge Track */
+/* Micro Gauge Track (Dark Mode) */
 .mini-bar-track {
     position: relative;
     width: 100%;
     height: 4px;
     border-radius: 2px;
     margin: 6px 0 4px;
-    background: #E2E8F0;
+    background: var(--bg-subtle);
 }
 .mini-bar-pointer {
     position: absolute;
     top: -3px;
     width: 5px;
     height: 10px;
-    background: #0F172A;
+    background: #F9FAFB;
     border-radius: 2px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
     transform: translateX(-50%);
 }
 .mini-bar-fill {
@@ -347,9 +339,9 @@ header[data-testid="stHeader"] {
 
 .metric-footer {
     font-size: 11.5px;
-    color: var(--text-secondary);
+    color: var(--text-muted);
     padding-top: 6px;
-    border-top: 1px solid var(--bg-subtle);
+    border-top: 1px solid var(--border-light);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -389,7 +381,7 @@ header[data-testid="stHeader"] {
 
 /* Briefing Callout & Ribbon */
 .briefing-callout {
-    background: var(--bg-subtle);
+    background: #161E2E;
     border-left: 3px solid var(--brand-primary);
     padding: 12px 14px;
     border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
@@ -410,9 +402,9 @@ header[data-testid="stHeader"] {
 .ribbon-chip {
     font-size: 11.5px;
     font-family: 'JetBrains Mono', monospace;
-    padding: 2px 8px;
+    padding: 3px 9px;
     border-radius: var(--radius-pill);
-    background: #FFFFFF;
+    background: #111827;
     border: 1px solid var(--border-light);
     color: var(--text-secondary);
 }
@@ -420,7 +412,7 @@ header[data-testid="stHeader"] {
 .briefing-body-text {
     font-size: 14px;
     line-height: 1.65;
-    color: #334155;
+    color: #CBD5E1;
     max-width: 68ch;
 }
 .briefing-body-text p {
@@ -436,7 +428,7 @@ header[data-testid="stHeader"] {
     gap: 12px;
     align-items: flex-start;
     padding: 11px 0;
-    border-bottom: 1px solid var(--bg-subtle);
+    border-bottom: 1px solid var(--border-light);
     font-size: 13px;
     line-height: 1.5;
 }
@@ -497,7 +489,7 @@ header[data-testid="stHeader"] {
     gap: 10px;
     align-items: center;
     flex-wrap: wrap;
-    background: var(--bg-subtle);
+    background: var(--bg-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-inner);
     padding: 8px 14px;
@@ -581,104 +573,96 @@ def degrees_to_cardinal(deg: float) -> str:
 METRIC_REGISTRY = {
     "aqi": {
         "name": "Air Quality Index",
-        "icon": "🍃",
         "unit": "AQI",
-        "eval_func": lambda v: ("Good", "#16A34A", "#F0FDF4", "#BBF7D0", "Safe threshold < 150") if v <= 50
-                              else ("Moderate", "#D97706", "#FFFBEB", "#FDE68A", "Advisory limit 51–150") if v <= 150
-                              else ("Hazardous", "#DC2626", "#FEF2F2", "#FECACA", "Hazardous > 150"),
+        "eval_func": lambda v: ("Good", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Safe threshold < 150") if v <= 50
+                              else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Advisory limit 51 to 150") if v <= 150
+                              else ("Hazardous", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazardous > 150"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #16A34A 0%, #16A34A 25%, #EAB308 25%, #EAB308 50%, #F97316 50%, #F97316 75%, #DC2626 75%, #DC2626 100%);">
+            <div class="mini-bar-track" style="background: linear-gradient(90deg, #34D399 0%, #34D399 25%, #FBBF24 25%, #FBBF24 50%, #FB923C 50%, #FB923C 75%, #F87171 75%, #F87171 100%);">
                 <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, (v / 200.0) * 100.0)):.1f}%;"></div>
             </div>
         """,
     },
     "temp_c": {
         "name": "Temperature",
-        "icon": "🌡️",
         "unit": "°C",
-        "eval_func": lambda v: ("Extreme", "#DC2626", "#FEF2F2", "#FECACA", "Hazard (< 0°C or > 40°C)") if v < 0 or v > 40
-                              else ("Advisory", "#D97706", "#FFFBEB", "#FDE68A", "Advisory (< 12°C or > 34°C)") if v < 12 or v > 34
-                              else ("Nominal", "#16A34A", "#F0FDF4", "#BBF7D0", "Comfort range 12°C – 34°C"),
+        "eval_func": lambda v: ("Extreme", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazard (< 0°C or > 40°C)") if v < 0 or v > 40
+                              else ("Advisory", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Advisory (< 12°C or > 34°C)") if v < 12 or v > 34
+                              else ("Nominal", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Comfort range 12°C to 34°C"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #38BDF8 0%, #38BDF8 25%, #4ADE80 25%, #4ADE80 70%, #FB923C 70%, #F87171 100%);">
+            <div class="mini-bar-track" style="background: linear-gradient(90deg, #38BDF8 0%, #38BDF8 25%, #34D399 25%, #34D399 70%, #FBBF24 70%, #F87171 100%);">
                 <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, ((v + 5) / 45.0) * 100.0)):.1f}%;"></div>
             </div>
         """,
     },
     "precip_mm": {
         "name": "Precipitation",
-        "icon": "🌧️",
         "unit": "mm",
-        "eval_func": lambda v: ("Heavy Rain", "#DC2626", "#FEF2F2", "#FECACA", "Hazard threshold > 20 mm") if v > 20
-                              else ("Moderate", "#D97706", "#FFFBEB", "#FDE68A", "Accumulation 2.5–20 mm") if v >= 2.5
-                              else ("Dry", "#16A34A", "#F0FDF4", "#BBF7D0", "Minimal accumulation (< 2.5 mm)"),
+        "eval_func": lambda v: ("Heavy Rain", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazard threshold > 20 mm") if v > 20
+                              else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Accumulation 2.5 to 20 mm") if v >= 2.5
+                              else ("Dry", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Minimal accumulation (< 2.5 mm)"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: #E2E8F0;">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 25.0) * 100.0)):.1f}%; background: #0284C7;"></div>
+            <div class="mini-bar-track" style="background: var(--bg-subtle);">
+                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 25.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
             </div>
         """,
     },
     "rain_prob": {
         "name": "Rain Probability",
-        "icon": "☔",
         "unit": "%",
-        "eval_func": lambda v: ("High Risk", "#DC2626", "#FEF2F2", "#FECACA", "High likelihood > 75%") if v > 75
-                              else ("Moderate", "#D97706", "#FFFBEB", "#FDE68A", "Chance of rain 30%–75%") if v >= 30
-                              else ("Low Risk", "#16A34A", "#F0FDF4", "#BBF7D0", "Rain unlikely (< 30%)"),
+        "eval_func": lambda v: ("High Risk", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "High likelihood > 75%") if v > 75
+                              else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Chance of rain 30% to 75%") if v >= 30
+                              else ("Low Risk", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Rain unlikely (< 30%)"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: #E2E8F0;">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, v)):.1f}%; background: #0284C7;"></div>
+            <div class="mini-bar-track" style="background: var(--bg-subtle);">
+                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, v)):.1f}%; background: #38BDF8;"></div>
             </div>
         """,
     },
     "humidity_pct": {
         "name": "Relative Humidity",
-        "icon": "💧",
         "unit": "%",
-        "eval_func": lambda v: ("Critical", "#DC2626", "#FEF2F2", "#FECACA", "Critical limit (< 20% or > 85%)") if v < 20 or v > 85
-                              else ("Dry Air", "#D97706", "#FFFBEB", "#FDE68A", "Low hydration advisory (< 30%)") if v < 30
-                              else ("High Moisture", "#D97706", "#FFFBEB", "#FDE68A", "Humid advisory (> 70%)") if v > 70
-                              else ("Comfortable", "#16A34A", "#F0FDF4", "#BBF7D0", "Optimal comfort 30% – 70%"),
+        "eval_func": lambda v: ("Critical", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Critical limit (< 20% or > 85%)") if v < 20 or v > 85
+                              else ("Dry Air", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Low hydration advisory (< 30%)") if v < 30
+                              else ("High Moisture", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Humid advisory (> 70%)") if v > 70
+                              else ("Comfortable", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Optimal comfort 30% to 70%"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #FDE68A 0%, #FDE68A 30%, #BBF7D0 30%, #BBF7D0 70%, #BAE6FD 70%, #BAE6FD 100%);">
+            <div class="mini-bar-track" style="background: linear-gradient(90deg, rgba(251, 191, 36, 0.5) 0%, rgba(251, 191, 36, 0.5) 30%, rgba(52, 211, 153, 0.5) 30%, rgba(52, 211, 153, 0.5) 70%, rgba(56, 189, 248, 0.5) 70%, rgba(56, 189, 248, 0.5) 100%);">
                 <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, v)):.1f}%;"></div>
             </div>
         """,
     },
     "uv_index": {
         "name": "UV Index",
-        "icon": "☀️",
         "unit": "UV",
-        "eval_func": lambda v: ("Very High", "#DC2626", "#FEF2F2", "#FECACA", "Hazardous index ≥ 8.0") if v >= 8
-                              else ("Moderate", "#D97706", "#FFFBEB", "#FDE68A", "Moderate exposure 3.0–7.9") if v >= 3
-                              else ("Low", "#16A34A", "#F0FDF4", "#BBF7D0", "Low sun radiation (< 3.0)"),
+        "eval_func": lambda v: ("Very High", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazardous index ≥ 8.0") if v >= 8
+                              else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Moderate exposure 3.0 to 7.9") if v >= 3
+                              else ("Low", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Low sun radiation (< 3.0)"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #16A34A 0%, #16A34A 25%, #EAB308 25%, #EAB308 58%, #F97316 58%, #F97316 83%, #DC2626 83%, #9333EA 100%);">
+            <div class="mini-bar-track" style="background: linear-gradient(90deg, #34D399 0%, #34D399 25%, #FBBF24 25%, #FBBF24 58%, #FB923C 58%, #FB923C 83%, #F87171 83%, #C084FC 100%);">
                 <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, (v / 12.0) * 100.0)):.1f}%;"></div>
             </div>
         """,
     },
     "wind_speed": {
         "name": "Wind Speed",
-        "icon": "💨",
         "unit": "km/h",
-        "eval_func": lambda v: ("High Wind", "#DC2626", "#FEF2F2", "#FECACA", "High wind hazard > 50 km/h") if v > 50
-                              else ("Breezy", "#D97706", "#FFFBEB", "#FDE68A", "Moderate breeze 20–50 km/h") if v >= 20
-                              else ("Calm", "#16A34A", "#F0FDF4", "#BBF7D0", "Light breeze (< 20 km/h)"),
+        "eval_func": lambda v: ("High Wind", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "High wind hazard > 50 km/h") if v > 50
+                              else ("Breezy", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Moderate breeze 20 to 50 km/h") if v >= 20
+                              else ("Calm", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Light breeze (< 20 km/h)"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: #E2E8F0;">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 50.0) * 100.0)):.1f}%; background: #0284C7;"></div>
+            <div class="mini-bar-track" style="background: var(--bg-subtle);">
+                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 50.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
             </div>
         """,
     },
     "wind_dir": {
         "name": "Wind Direction",
-        "icon": "🧭",
         "unit": "",
-        "eval_func": lambda v: (degrees_to_cardinal(v), "#0284C7", "#F0F9FF", "#BAE6FD", f"Bearing {degrees_to_cardinal(v)} from North"),
+        "eval_func": lambda v: (degrees_to_cardinal(v), "#38BDF8", "rgba(56, 189, 248, 0.12)", "rgba(56, 189, 248, 0.28)", f"Bearing {degrees_to_cardinal(v)} from North"),
         "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: #E2E8F0;">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 360.0) * 100.0)):.1f}%; background: #0284C7;"></div>
+            <div class="mini-bar-track" style="background: var(--bg-subtle);">
+                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 360.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
             </div>
         """,
     },
@@ -695,46 +679,27 @@ def render_advisory_section(advisory_text: str):
     structured_rows = []
     plain_paragraphs = []
 
-    icon_map = {
-        "air quality": "🍃",
-        "respiratory": "🫁",
-        "hydration": "💧",
-        "commuting": "🚗",
-        "uv": "☀️",
-        "thermal": "🌡️",
-        "ppe": "🦺",
-        "work": "⏰",
-    }
-
     for line in lines:
         match = re.match(r"^[-*•]?\s*\*\*([^*:]+):?\*\*:?\s*(.+)$", line)
         if match:
             cat = match.group(1).strip()
             desc = match.group(2).strip()
             body_lower = desc.lower()
-            cat_lower = cat.lower()
-
-            # Select icon
-            icon = "📋"
-            for key_phrase, ic in icon_map.items():
-                if key_phrase in cat_lower:
-                    icon = ic
-                    break
 
             if any(w in body_lower for w in ["hazard", "critical", "mandatory", "severe", "danger"]):
-                badge_color = "#DC2626"
-                badge_bg = "#FEF2F2"
-                badge_border = "#FECACA"
+                badge_color = "#F87171"
+                badge_bg = "rgba(248, 113, 113, 0.12)"
+                badge_border = "rgba(248, 113, 113, 0.28)"
             elif any(w in body_lower for w in ["priority", "advisory", "caution", "low", "limit", "dry", "elevated", "protect"]):
-                badge_color = "#D97706"
-                badge_bg = "#FFFBEB"
-                badge_border = "#FDE68A"
+                badge_color = "#FBBF24"
+                badge_bg = "rgba(251, 191, 36, 0.12)"
+                badge_border = "rgba(251, 191, 36, 0.28)"
             else:
-                badge_color = "#16A34A"
-                badge_bg = "#F0FDF4"
-                badge_border = "#BBF7D0"
+                badge_color = "#34D399"
+                badge_bg = "rgba(52, 211, 153, 0.12)"
+                badge_border = "rgba(52, 211, 153, 0.28)"
 
-            structured_rows.append((f"{icon} {cat}", desc, badge_color, badge_bg, badge_border))
+            structured_rows.append((cat, desc, badge_color, badge_bg, badge_border))
         else:
             plain_paragraphs.append(line)
 
@@ -787,15 +752,15 @@ else:
 
 n_alerts = len(active_alerts)
 if n_alerts == 0:
-    overall_status_text = "● All Parameters Nominal"
-    overall_status_col = "#16A34A"
-    overall_status_bg = "#F0FDF4"
-    overall_status_bdr = "#BBF7D0"
+    overall_status_text = "All Parameters Nominal"
+    overall_status_col = "#34D399"
+    overall_status_bg = "rgba(52, 211, 153, 0.12)"
+    overall_status_bdr = "rgba(52, 211, 153, 0.28)"
 else:
-    overall_status_text = f"● {n_alerts} Active Hazard Warning(s)"
-    overall_status_col = "#DC2626"
-    overall_status_bg = "#FEF2F2"
-    overall_status_bdr = "#FECACA"
+    overall_status_text = f"{n_alerts} Active Hazard Warning(s)"
+    overall_status_col = "#F87171"
+    overall_status_bg = "rgba(248, 113, 113, 0.12)"
+    overall_status_bdr = "rgba(248, 113, 113, 0.28)"
 
 
 # ─── Sidebar: Compact Scientific Console ──────────────────────────────────────
@@ -804,26 +769,26 @@ with st.sidebar:
     st.markdown(f"""
     <div style="padding: 6px 0 16px;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <span style="font-size: 18px; font-weight: 700; color: #0F172A; letter-spacing: -0.02em;">AgentWeather</span>
-            <span style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534;">
-                ● Live • {city_name}
+            <span style="font-size: 18px; font-weight: 700; color: #F8FAFC; letter-spacing: -0.02em;">AgentWeather</span>
+            <span style="font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.28); color: #34D399;">
+                LIVE - {city_name}
             </span>
         </div>
-        <div style="font-size: 12px; color: #64748B;">Meteorological Intelligence & ML Observability</div>
+        <div style="font-size: 12px; color: #94A3B8;">Meteorological Intelligence & ML Observability</div>
     </div>
     """, unsafe_allow_html=True)
 
     # Location Details Card
     st.markdown(f"""
-    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
-        <div style="font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; margin-bottom: 3px;">Station Location</div>
-        <div style="font-size: 13.5px; font-weight: 600; color: #0F172A;">{city_name}, Pakistan</div>
-        <div style="font-size: 11.5px; font-family: 'JetBrains Mono', monospace; color: #64748B; margin-top: 3px;">{CITY_LAT}° N, {CITY_LON}° E • 527m ASL</div>
+    <div style="background: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;">
+        <div style="font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #94A3B8; margin-bottom: 3px;">Station Location</div>
+        <div style="font-size: 13.5px; font-weight: 600; color: #F8FAFC;">{city_name}, Pakistan</div>
+        <div style="font-size: 11.5px; font-family: 'JetBrains Mono', monospace; color: #94A3B8; margin-top: 3px;">{CITY_LAT}° N, {CITY_LON}° E | 527m ASL</div>
     </div>
     """, unsafe_allow_html=True)
 
     # Action Trigger with Verified Contrast
-    if st.button("⚡ Run Forecast Cycle", use_container_width=True, type="primary"):
+    if st.button("Run Forecast Cycle", use_container_width=True, type="primary"):
         with st.spinner("Executing live multi-source ingestion & 4-node agent cycle..."):
             live_df = ingest_live_row(city=city_name)
             eng_df = build_engineered_features(live_df)
@@ -832,33 +797,33 @@ with st.sidebar:
             st.success("Hourly cycle completed successfully.")
             st.rerun()
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 18px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #1E293B; margin: 18px 0;'>", unsafe_allow_html=True)
 
     # Pipeline Node Stepper (Compact Single-Glance)
-    st.markdown("<div style='font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B; margin-bottom: 10px;'>Pipeline Nodes</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #94A3B8; margin-bottom: 10px;'>Pipeline Nodes</div>", unsafe_allow_html=True)
     stepper_nodes = [
-        ("Forecast Agent", "8 Dedicated Model Champions", "#16A34A"),
-        ("Alert Agent", "Groq Safety Rules & Advisories", "#16A34A"),
-        ("Drift Agent", "Two-Sample KS & Error Tracking", "#0284C7"),
-        ("Report Agent", "Journalistic Broadcast Dispatch", "#16A34A"),
+        ("Forecast Agent", "8 Dedicated Model Champions", "#34D399"),
+        ("Alert Agent", "Groq Safety Rules & Advisories", "#34D399"),
+        ("Drift Agent", "Two-Sample KS & Error Tracking", "#38BDF8"),
+        ("Report Agent", "Journalistic Broadcast Dispatch", "#34D399"),
     ]
     for name, detail, col in stepper_nodes:
         st.markdown(f"""
         <div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 10px;">
-            <div style="width: 7px; height: 7px; border-radius: 50%; background: {col}; margin-top: 5px; flex-shrink: 0;"></div>
+            <div style="width: 3px; height: 16px; border-radius: 2px; background: {col}; margin-top: 2px; flex-shrink: 0;"></div>
             <div>
-                <div style="font-size: 12.5px; font-weight: 600; color: #0F172A; line-height: 1.2;">{name}</div>
-                <div style="font-size: 11px; color: #64748B; margin-top: 1px;">{detail}</div>
+                <div style="font-size: 12.5px; font-weight: 600; color: #F8FAFC; line-height: 1.2;">{name}</div>
+                <div style="font-size: 11px; color: #94A3B8; margin-top: 1px;">{detail}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 18px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #1E293B; margin: 18px 0;'>", unsafe_allow_html=True)
 
     # Understated Metadata Tech Stack Footer
     st.markdown("""
-    <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
-        LangGraph • Hopsworks • Groq • GitHub Actions
+    <div style="font-size: 11px; color: #64748B; line-height: 1.6;">
+        LangGraph | Hopsworks | Groq | GitHub Actions
     </div>
     """, unsafe_allow_html=True)
 
@@ -868,7 +833,6 @@ st.markdown(f"""
 <div class="hero-header-bar">
     <div class="hero-title-group">
         <div class="eyebrow">
-            <span>●</span>
             <span>Atmospheric Intelligence & ML Observability</span>
         </div>
         <div class="main-title">{city_name} 24-Hour Weather & Air Quality Outlook</div>
@@ -881,10 +845,10 @@ st.markdown(f"""
         </span>
     </div>
     <div class="hero-snapshot-strip">
-        <span class="snapshot-item">☀️ Clear & Dry Conditions</span>
-        <span class="snapshot-item">📊 Barometric Pressure: {latest_telemetry['pressure']}</span>
-        <span class="snapshot-item">☁️ Cloud Cover: {latest_telemetry['cloud_cover']}</span>
-        <span class="snapshot-item">🏔️ Station Elevation: 527m ASL</span>
+        <span class="snapshot-item">Clear & Dry Conditions</span>
+        <span class="snapshot-item">Barometric Pressure: {latest_telemetry['pressure']}</span>
+        <span class="snapshot-item">Cloud Cover: {latest_telemetry['cloud_cover']}</span>
+        <span class="snapshot-item">Elevation: 527m ASL</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -909,11 +873,9 @@ for col, key in zip(cols_r1, keys_row1):
             <div class="card-accent-bar" style="background: {text_col};"></div>
             <div class="metric-header">
                 <div class="metric-name-group">
-                    <span class="metric-icon">{cfg['icon']}</span>
                     <span class="metric-name">{cfg['name']}</span>
                 </div>
                 <span class="metric-status-badge" style="color: {text_col}; background: {bg_col}; border-color: {bdr_col};">
-                    <span class="metric-status-dot" style="background: {text_col};"></span>
                     {status_label}
                 </span>
             </div>
@@ -949,11 +911,9 @@ for col, key in zip(cols_r2, keys_row2):
             <div class="card-accent-bar" style="background: {text_col};"></div>
             <div class="metric-header">
                 <div class="metric-name-group">
-                    <span class="metric-icon">{cfg['icon']}</span>
                     <span class="metric-name">{cfg['name']}</span>
                 </div>
                 <span class="metric-status-badge" style="color: {text_col}; background: {bg_col}; border-color: {bdr_col};">
-                    <span class="metric-status-dot" style="background: {text_col};"></span>
                     {status_label}
                 </span>
             </div>
@@ -989,10 +949,10 @@ with col_briefing:
                 Mild daytime warmth with exceptionally clear skies and low relative humidity expected across the metropolitan capital region over the next 24 hours.
             </div>
             <div class="briefing-ribbon">
-                <span class="ribbon-chip">🌡️ Peak Temp: {temp_val:.1f}°C</span>
-                <span class="ribbon-chip">💧 Humidity: {hum_val:.1f}% (Dry Air)</span>
-                <span class="ribbon-chip">🍃 Air Quality: {aqi_val:.1f} AQI (Good)</span>
-                <span class="ribbon-chip">☔ Rain Risk: {rain_val:.1f}% (Low)</span>
+                <span class="ribbon-chip">Peak Temp: {temp_val:.1f}°C</span>
+                <span class="ribbon-chip">Humidity: {hum_val:.1f}% (Dry Air)</span>
+                <span class="ribbon-chip">Air Quality: {aqi_val:.1f} AQI (Good)</span>
+                <span class="ribbon-chip">Rain Risk: {rain_val:.1f}% (Low)</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -1020,13 +980,13 @@ with col_advisory:
     if active_alerts:
         flagged_summary = ", ".join([a["metric"].upper() for a in active_alerts])
         st.markdown(f"""
-        <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #DC2626;">
+        <div style="background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.28); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #F87171;">
             <b>Active Hazard Advisory:</b> {len(active_alerts)} metric(s) exceed normal thresholds ({flagged_summary}). Review specialized protocols below.
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #166534;">
+        <div style="background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.28); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 12.5px; color: #34D399;">
             <b>Status Green:</b> All 8 predicted atmospheric and environmental parameters remain within safe baseline thresholds.
         </div>
         """, unsafe_allow_html=True)
@@ -1075,15 +1035,15 @@ if hist_df is not None and not hist_df.empty:
 
         fig = go.Figure()
 
-        # Observed Area Fill Line (Tomorrow.io Aesthetic)
+        # Observed Area Fill Line (Tomorrow.io / Linear Aesthetic)
         fig.add_trace(go.Scatter(
             x=history_window["timestamp"],
             y=history_window[chart_metric],
             mode="lines",
             name="Observed History",
-            line=dict(color="#0284C7", width=2.2),
+            line=dict(color="#38BDF8", width=2.2),
             fill="tozeroy",
-            fillcolor="rgba(2, 132, 199, 0.05)",
+            fillcolor="rgba(56, 189, 248, 0.08)",
             hovertemplate="%{y:.2f}<extra>Observed</extra>",
         ))
 
@@ -1097,8 +1057,8 @@ if hist_df is not None and not hist_df.empty:
             y=[history_window[chart_metric].iloc[-1], pred_val],
             mode="lines+markers",
             name="24h Prediction Horizon",
-            line=dict(color="#F59E0B", width=2.2, dash="dot"),
-            marker=dict(size=[5, 9], color=["#0284C7", "#F59E0B"], symbol=["circle", "star"]),
+            line=dict(color="#FBBF24", width=2.2, dash="dot"),
+            marker=dict(size=[5, 8], color=["#38BDF8", "#FBBF24"], symbol=["circle", "circle"]),
             hovertemplate="%{y:.2f}<extra>Forecast T+24h</extra>",
         ))
 
@@ -1108,22 +1068,22 @@ if hist_df is not None and not hist_df.empty:
             fig.add_hline(
                 y=hazard_rule["max"],
                 line_dash="dot",
-                line_color="#DC2626",
+                line_color="#F87171",
                 line_width=1.0,
                 annotation_text=f"Hazard Upper Limit: {hazard_rule['max']}",
                 annotation_font_size=10,
-                annotation_font_color="#DC2626",
+                annotation_font_color="#F87171",
                 annotation_position="top right",
             )
         if hazard_rule.get("min") is not None:
             fig.add_hline(
                 y=hazard_rule["min"],
                 line_dash="dot",
-                line_color="#D97706",
+                line_color="#FBBF24",
                 line_width=1.0,
                 annotation_text=f"Hazard Lower Limit: {hazard_rule['min']}",
                 annotation_font_size=10,
-                annotation_font_color="#D97706",
+                annotation_font_color="#FBBF24",
                 annotation_position="bottom right",
             )
 
@@ -1131,29 +1091,29 @@ if hist_df is not None and not hist_df.empty:
         fig.update_layout(
             margin=dict(l=10, r=10, t=30, b=10),
             height=340,
-            template="plotly_white",
-            paper_bgcolor="#FFFFFF",
-            plot_bgcolor="#FFFFFF",
-            font=dict(family="Inter, -apple-system, sans-serif", color="#0F172A", size=12),
+            template="plotly_dark",
+            paper_bgcolor="#111827",
+            plot_bgcolor="#111827",
+            font=dict(family="Inter, -apple-system, sans-serif", color="#F3F4F6", size=12),
             title=dict(
-                text=f"{metric_title} — {lookback_hours}h Telemetry with Forward T+24h Trajectory",
-                font=dict(size=13, color="#0F172A", weight=600),
+                text=f"{metric_title} - {lookback_hours}h Telemetry with Forward T+24h Trajectory",
+                font=dict(size=13, color="#F3F4F6", weight=600),
                 x=0.0,
                 xanchor="left",
             ),
             xaxis=dict(
                 title="Timestamp (UTC)",
                 showgrid=True,
-                gridcolor="#F1F5F9",
-                linecolor="#E2E8F0",
-                tickfont=dict(size=11),
+                gridcolor="#1F2937",
+                linecolor="#374151",
+                tickfont=dict(size=11, color="#9CA3AF"),
             ),
             yaxis=dict(
                 title=metric_title,
                 showgrid=True,
-                gridcolor="#F1F5F9",
-                linecolor="#E2E8F0",
-                tickfont=dict(size=11),
+                gridcolor="#1F2937",
+                linecolor="#374151",
+                tickfont=dict(size=11, color="#9CA3AF"),
             ),
             legend=dict(
                 orientation="h",
@@ -1161,8 +1121,8 @@ if hist_df is not None and not hist_df.empty:
                 y=1.02,
                 xanchor="right",
                 x=1,
-                font=dict(size=11),
-                bgcolor="rgba(255,255,255,0.8)",
+                font=dict(size=11, color="#D1D5DB"),
+                bgcolor="rgba(17, 24, 39, 0.85)",
             ),
         )
 
@@ -1186,17 +1146,17 @@ with tab_ledger:
     st.markdown("""
     <div class="tab-summary-ribbon">
         <span class="tab-summary-item">Deployed Champions: <b>8 Models</b></span>
-        <span style="color: #CBD5E1;">•</span>
+        <span style="color: #374151;">|</span>
         <span class="tab-summary-item">Model Registry Status: <b>Promoted (v1)</b></span>
-        <span style="color: #CBD5E1;">•</span>
+        <span style="color: #374151;">|</span>
         <span class="tab-summary-item">Chronological Split: <b>80% Train, 10% Val, 10% Test</b></span>
-        <span style="color: #CBD5E1;">•</span>
+        <span style="color: #374151;">|</span>
         <span class="tab-summary-item">Inference Horizon: <b>T+24h Ahead</b></span>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;">
+    <div style="font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;">
         Recent Inference Ledger Entries
     </div>
     """, unsafe_allow_html=True)
@@ -1226,7 +1186,7 @@ with tab_ledger:
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
     st.markdown("""
-    <div style="font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;">
+    <div style="font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;">
         Champion Model Registry Validation Benchmarks
     </div>
     """, unsafe_allow_html=True)
@@ -1254,7 +1214,7 @@ with tab_ledger:
         st.dataframe(pd.DataFrame(perf_rows), use_container_width=True, hide_index=True)
     else:
         st.markdown("""
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px 18px; font-size: 13px; color: #64748B;">
+        <div style="background: #111827; border: 1px solid #1E293B; border-radius: 8px; padding: 14px 18px; font-size: 13px; color: #94A3B8;">
             <b>Model Registry Notice:</b> Validation benchmark metrics are compiled during scheduled training runs. Champion model weights are active and serving inference.
         </div>
         """, unsafe_allow_html=True)
@@ -1264,7 +1224,7 @@ with tab_shap:
     shap_col, eda_col = st.columns([1, 1], gap="medium")
 
     with shap_col:
-        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;'>SHAP Global Feature Importance</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;'>SHAP Global Feature Importance</div>", unsafe_allow_html=True)
         selected_shap = st.selectbox(
             "Select Target Variable",
             options=TARGET_METRICS,
@@ -1272,17 +1232,17 @@ with tab_shap:
         )
         shap_file = EDA_ARTIFACTS_DIR / f"shap_importance_{selected_shap}.png"
         if shap_file.exists():
-            st.image(str(shap_file), caption=f"SHAP Global Feature Importance — {METRIC_REGISTRY.get(selected_shap, {}).get('name', selected_shap)}", use_container_width=True)
+            st.image(str(shap_file), caption=f"SHAP Global Feature Importance - {METRIC_REGISTRY.get(selected_shap, {}).get('name', selected_shap)}", use_container_width=True)
         else:
             st.info(f"SHAP artifact for {selected_shap} generated during daily training.")
 
     with eda_col:
-        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;'>Baseline Target Distributions</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;'>Baseline Target Distributions</div>", unsafe_allow_html=True)
         dist_img = EDA_ARTIFACTS_DIR / "eda_metric_distributions.png"
         if dist_img.exists():
             st.image(str(dist_img), caption="Historical Observed Distributions Across Target Categories", use_container_width=True)
 
-        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-top: 14px; margin-bottom: 8px;'>Diurnal 24-Hour Seasonality</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-top: 14px; margin-bottom: 8px;'>Diurnal 24-Hour Seasonality</div>", unsafe_allow_html=True)
         diurnal_img = EDA_ARTIFACTS_DIR / "eda_hourly_diurnal_seasonality.png"
         if diurnal_img.exists():
             st.image(str(diurnal_img), caption="Diurnal Day & Night Seasonality Profiles", use_container_width=True)
@@ -1294,13 +1254,13 @@ with tab_drift:
 
     if drift_detected:
         st.markdown("""
-        <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #DC2626;">
+        <div style="background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #F87171;">
             <b>Statistical Drift Detected:</b> Automated continuous retraining workflow triggered via GitHub Actions dispatch.
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #166534;">
+        <div style="background: rgba(52, 211, 153, 0.12); border: 1px solid rgba(52, 211, 153, 0.28); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #34D399;">
             <b>Nominal Conditions:</b> Two-sample Kolmogorov-Smirnov p-values > 0.05. Model forecast error degradation remains within the 25% threshold.
         </div>
         """, unsafe_allow_html=True)
@@ -1308,7 +1268,7 @@ with tab_drift:
     ks_col, md_col = st.columns(2, gap="medium")
 
     with ks_col:
-        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;'>Two-Sample Kolmogorov-Smirnov (KS) Data Drift Test</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;'>Two-Sample Kolmogorov-Smirnov (KS) Data Drift Test</div>", unsafe_allow_html=True)
         ks_details = drift_data.get("data_drift", {}).get("details", {})
         if ks_details:
             ks_rows = []
@@ -1327,7 +1287,7 @@ with tab_drift:
             st.info("Accumulating feature rows for Kolmogorov-Smirnov distribution check.")
 
     with md_col:
-        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;'>Model Forecast Error Degradation (Model Drift)</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;'>Model Forecast Error Degradation (Model Drift)</div>", unsafe_allow_html=True)
         md_metrics = drift_data.get("model_drift", {}).get("metrics", {})
         if md_metrics:
             md_rows = []
@@ -1348,7 +1308,7 @@ with tab_drift:
 
 # ── Tab 4: LLM Audit Log ──
 with tab_audit:
-    st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #0F172A; margin-bottom: 8px;'>Groq LLM Inference & Failure Audit Ledger</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 12.5px; font-weight: 600; color: #F9FAFB; margin-bottom: 8px;'>Groq LLM Inference & Failure Audit Ledger</div>", unsafe_allow_html=True)
     calls = agent_state.get("audit_call_logs", [])
     filter_choice = st.selectbox("Log Filter", options=["All Inferences", "Successful Inferences Only", "Failed Inferences Only"])
 
@@ -1368,8 +1328,8 @@ with tab_audit:
                 ts_val = row.get("timestamp", "N/A")
                 latency = row.get("latency_ms", 0)
 
-                status_col = "#16A34A" if status_val == "SUCCESS" else "#DC2626"
-                expander_label = f"[{status_val}] {agent_name} • {ts_val} • {latency} ms"
+                status_col = "#34D399" if status_val == "SUCCESS" else "#F87171"
+                expander_label = f"[{status_val}] {agent_name} | {ts_val} | {latency} ms"
 
                 with st.expander(expander_label):
                     st.markdown(f"<b>Agent Node:</b> {agent_name} &nbsp;&nbsp;|&nbsp;&nbsp; <b>Status:</b> <span style='color:{status_col}; font-weight:600;'>{status_val}</span> &nbsp;&nbsp;|&nbsp;&nbsp; <b>Latency:</b> {latency} ms", unsafe_allow_html=True)
@@ -1384,7 +1344,7 @@ with tab_audit:
 # ─── Footer ───────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="console-footer">
-    <span>AgentWeather • Meteorological Intelligence & ML Observability Platform</span>
+    <span>AgentWeather | Meteorological Intelligence & ML Observability Platform</span>
     <span>Target Station: {city_name}, Pakistan ({CITY_LAT}° N, {CITY_LON}° E)</span>
 </div>
 """, unsafe_allow_html=True)
