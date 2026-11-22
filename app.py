@@ -570,6 +570,27 @@ def degrees_to_cardinal(deg: float) -> str:
 
 
 # 8 Forecast Target Metrics with Standard Scientific Units & Semantic Thresholds
+def _gauge_aqi(v):
+    pct = f"{min(100.0, max(0.0, (v / 200.0) * 100.0)):.1f}"
+    return f'<div style="width:100%;height:4px;border-radius:2px;margin:8px 0 6px;background:linear-gradient(90deg,#34D399 0%,#34D399 25%,#FBBF24 25%,#FBBF24 50%,#FB923C 50%,#FB923C 75%,#F87171 75%,#F87171 100%);position:relative;"><div style="position:absolute;top:-3px;left:{pct}%;width:5px;height:10px;background:#F9FAFB;border-radius:2px;transform:translateX(-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5);"></div></div>'
+
+def _gauge_temp(v):
+    pct = f"{min(100.0, max(0.0, ((v + 5) / 45.0) * 100.0)):.1f}"
+    return f'<div style="width:100%;height:4px;border-radius:2px;margin:8px 0 6px;background:linear-gradient(90deg,#38BDF8 0%,#38BDF8 25%,#34D399 25%,#34D399 70%,#FBBF24 70%,#F87171 100%);position:relative;"><div style="position:absolute;top:-3px;left:{pct}%;width:5px;height:10px;background:#F9FAFB;border-radius:2px;transform:translateX(-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5);"></div></div>'
+
+def _gauge_fill(v, max_v, color="#38BDF8"):
+    pct = f"{min(100.0, max(0.0, (v / max_v) * 100.0)):.1f}"
+    return f'<div style="width:100%;height:4px;border-radius:2px;margin:8px 0 6px;background:#1F2937;"><div style="height:100%;width:{pct}%;border-radius:2px;background:{color};"></div></div>'
+
+def _gauge_humidity(v):
+    pct = f"{min(100.0, max(0.0, v)):.1f}"
+    return f'<div style="width:100%;height:4px;border-radius:2px;margin:8px 0 6px;background:linear-gradient(90deg,rgba(251,191,36,0.5) 0%,rgba(251,191,36,0.5) 30%,rgba(52,211,153,0.5) 30%,rgba(52,211,153,0.5) 70%,rgba(56,189,248,0.5) 70%,rgba(56,189,248,0.5) 100%);position:relative;"><div style="position:absolute;top:-3px;left:{pct}%;width:5px;height:10px;background:#F9FAFB;border-radius:2px;transform:translateX(-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5);"></div></div>'
+
+def _gauge_uv(v):
+    pct = f"{min(100.0, max(0.0, (v / 12.0) * 100.0)):.1f}"
+    return f'<div style="width:100%;height:4px;border-radius:2px;margin:8px 0 6px;background:linear-gradient(90deg,#34D399 0%,#34D399 25%,#FBBF24 25%,#FBBF24 58%,#FB923C 58%,#FB923C 83%,#F87171 83%,#C084FC 100%);position:relative;"><div style="position:absolute;top:-3px;left:{pct}%;width:5px;height:10px;background:#F9FAFB;border-radius:2px;transform:translateX(-50%);box-shadow:0 1px 3px rgba(0,0,0,0.5);"></div></div>'
+
+
 METRIC_REGISTRY = {
     "aqi": {
         "name": "Air Quality Index",
@@ -577,11 +598,7 @@ METRIC_REGISTRY = {
         "eval_func": lambda v: ("Good", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Safe threshold < 150") if v <= 50
                               else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Advisory limit 51 to 150") if v <= 150
                               else ("Hazardous", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazardous > 150"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #34D399 0%, #34D399 25%, #FBBF24 25%, #FBBF24 50%, #FB923C 50%, #FB923C 75%, #F87171 75%, #F87171 100%);">
-                <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, (v / 200.0) * 100.0)):.1f}%;"></div>
-            </div>
-        """,
+        "gauge_html": _gauge_aqi,
     },
     "temp_c": {
         "name": "Temperature",
@@ -589,11 +606,7 @@ METRIC_REGISTRY = {
         "eval_func": lambda v: ("Extreme", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazard (< 0°C or > 40°C)") if v < 0 or v > 40
                               else ("Advisory", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Advisory (< 12°C or > 34°C)") if v < 12 or v > 34
                               else ("Nominal", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Comfort range 12°C to 34°C"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #38BDF8 0%, #38BDF8 25%, #34D399 25%, #34D399 70%, #FBBF24 70%, #F87171 100%);">
-                <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, ((v + 5) / 45.0) * 100.0)):.1f}%;"></div>
-            </div>
-        """,
+        "gauge_html": _gauge_temp,
     },
     "precip_mm": {
         "name": "Precipitation",
@@ -601,11 +614,7 @@ METRIC_REGISTRY = {
         "eval_func": lambda v: ("Heavy Rain", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazard threshold > 20 mm") if v > 20
                               else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Accumulation 2.5 to 20 mm") if v >= 2.5
                               else ("Dry", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Minimal accumulation (< 2.5 mm)"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: var(--bg-subtle);">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 25.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
-            </div>
-        """,
+        "gauge_html": lambda v: _gauge_fill(v, 25.0),
     },
     "rain_prob": {
         "name": "Rain Probability",
@@ -613,11 +622,7 @@ METRIC_REGISTRY = {
         "eval_func": lambda v: ("High Risk", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "High likelihood > 75%") if v > 75
                               else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Chance of rain 30% to 75%") if v >= 30
                               else ("Low Risk", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Rain unlikely (< 30%)"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: var(--bg-subtle);">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, v)):.1f}%; background: #38BDF8;"></div>
-            </div>
-        """,
+        "gauge_html": lambda v: _gauge_fill(v, 100.0),
     },
     "humidity_pct": {
         "name": "Relative Humidity",
@@ -626,23 +631,15 @@ METRIC_REGISTRY = {
                               else ("Dry Air", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Low hydration advisory (< 30%)") if v < 30
                               else ("High Moisture", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Humid advisory (> 70%)") if v > 70
                               else ("Comfortable", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Optimal comfort 30% to 70%"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, rgba(251, 191, 36, 0.5) 0%, rgba(251, 191, 36, 0.5) 30%, rgba(52, 211, 153, 0.5) 30%, rgba(52, 211, 153, 0.5) 70%, rgba(56, 189, 248, 0.5) 70%, rgba(56, 189, 248, 0.5) 100%);">
-                <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, v)):.1f}%;"></div>
-            </div>
-        """,
+        "gauge_html": _gauge_humidity,
     },
     "uv_index": {
         "name": "UV Index",
         "unit": "UV",
-        "eval_func": lambda v: ("Very High", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazardous index ≥ 8.0") if v >= 8
+        "eval_func": lambda v: ("Very High", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "Hazardous index >= 8.0") if v >= 8
                               else ("Moderate", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Moderate exposure 3.0 to 7.9") if v >= 3
                               else ("Low", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Low sun radiation (< 3.0)"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: linear-gradient(90deg, #34D399 0%, #34D399 25%, #FBBF24 25%, #FBBF24 58%, #FB923C 58%, #FB923C 83%, #F87171 83%, #C084FC 100%);">
-                <div class="mini-bar-pointer" style="left: {min(100.0, max(0.0, (v / 12.0) * 100.0)):.1f}%;"></div>
-            </div>
-        """,
+        "gauge_html": _gauge_uv,
     },
     "wind_speed": {
         "name": "Wind Speed",
@@ -650,21 +647,13 @@ METRIC_REGISTRY = {
         "eval_func": lambda v: ("High Wind", "#F87171", "rgba(248, 113, 113, 0.12)", "rgba(248, 113, 113, 0.28)", "High wind hazard > 50 km/h") if v > 50
                               else ("Breezy", "#FBBF24", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)", "Moderate breeze 20 to 50 km/h") if v >= 20
                               else ("Calm", "#34D399", "rgba(52, 211, 153, 0.12)", "rgba(52, 211, 153, 0.28)", "Light breeze (< 20 km/h)"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: var(--bg-subtle);">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 50.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
-            </div>
-        """,
+        "gauge_html": lambda v: _gauge_fill(v, 50.0),
     },
     "wind_dir": {
         "name": "Wind Direction",
         "unit": "",
         "eval_func": lambda v: (degrees_to_cardinal(v), "#38BDF8", "rgba(56, 189, 248, 0.12)", "rgba(56, 189, 248, 0.28)", f"Bearing {degrees_to_cardinal(v)} from North"),
-        "gauge_html": lambda v: f"""
-            <div class="mini-bar-track" style="background: var(--bg-subtle);">
-                <div class="mini-bar-fill" style="width: {min(100.0, max(0.0, (v / 360.0) * 100.0)):.1f}%; background: #38BDF8;"></div>
-            </div>
-        """,
+        "gauge_html": lambda v: _gauge_fill(v, 360.0),
     },
 }
 
@@ -833,7 +822,7 @@ st.markdown(f"""
 <div class="hero-header-bar">
     <div class="hero-title-group">
         <div class="eyebrow">
-            <span>Atmospheric Intelligence & ML Observability</span>
+            <span>Islamabad, Pakistan</span>
         </div>
         <div class="main-title">{city_name} 24-Hour Weather & Air Quality Outlook</div>
     </div>
@@ -854,8 +843,28 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
+def render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note):
+    gauge = cfg["gauge_html"](val)
+    parts = [
+        '<div class="metric-card-console">',
+        f'<div class="card-accent-bar" style="background:{text_col};"></div>',
+        '<div class="metric-header">',
+        f'<span class="metric-name">{cfg["name"]}</span>',
+        f'<span class="metric-status-badge" style="color:{text_col};background:{bg_col};border-color:{bdr_col};">{status_label}</span>',
+        '</div>',
+        '<div class="metric-value-row">',
+        f'<span class="metric-number">{display_number}</span>',
+        f'<span class="metric-unit">{display_unit}</span>',
+        '</div>',
+        gauge,
+        f'<div class="metric-footer">{note}</div>',
+        '</div>',
+    ]
+    return "".join(parts)
+
+
 # ─── Section 1: 24-Hour Predictive Metrics Grid (2 Rows x 4 Columns) ──────────
-st.markdown('<div class="section-headline">24-Hour Predictive Forecast Horizon (T+24h)</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-headline">24-Hour Forecast</div>', unsafe_allow_html=True)
 
 keys_row1 = ["aqi", "temp_c", "precip_mm", "rain_prob"]
 keys_row2 = ["humidity_pct", "uv_index", "wind_speed", "wind_dir"]
@@ -865,70 +874,28 @@ for col, key in zip(cols_r1, keys_row1):
     cfg = METRIC_REGISTRY[key]
     val = float(forecasts.get(key, 0.0))
     status_label, text_col, bg_col, bdr_col, note = cfg["eval_func"](val)
-    gauge_markup = cfg["gauge_html"](val)
-
     with col:
-        st.markdown(f"""
-        <div class="metric-card-console">
-            <div class="card-accent-bar" style="background: {text_col};"></div>
-            <div class="metric-header">
-                <div class="metric-name-group">
-                    <span class="metric-name">{cfg['name']}</span>
-                </div>
-                <span class="metric-status-badge" style="color: {text_col}; background: {bg_col}; border-color: {bdr_col};">
-                    {status_label}
-                </span>
-            </div>
-            <div class="metric-value-row">
-                <span class="metric-number">{val:.1f}</span>
-                <span class="metric-unit">{cfg['unit']}</span>
-            </div>
-            {gauge_markup}
-            <div class="metric-footer" title="{note}">{note}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(render_metric_card(cfg, val, f"{val:.1f}", cfg["unit"], text_col, bg_col, bdr_col, status_label, note), unsafe_allow_html=True)
 
-st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
 
 cols_r2 = st.columns(4)
 for col, key in zip(cols_r2, keys_row2):
     cfg = METRIC_REGISTRY[key]
     val = float(forecasts.get(key, 0.0))
     status_label, text_col, bg_col, bdr_col, note = cfg["eval_func"](val)
-    gauge_markup = cfg["gauge_html"](val)
-
-    # Special format for wind direction (show cardinal + degrees)
     if key == "wind_dir":
         display_number = f"{round(val)}°"
         display_unit = degrees_to_cardinal(val)
     else:
         display_number = f"{val:.1f}"
         display_unit = cfg["unit"]
-
     with col:
-        st.markdown(f"""
-        <div class="metric-card-console">
-            <div class="card-accent-bar" style="background: {text_col};"></div>
-            <div class="metric-header">
-                <div class="metric-name-group">
-                    <span class="metric-name">{cfg['name']}</span>
-                </div>
-                <span class="metric-status-badge" style="color: {text_col}; background: {bg_col}; border-color: {bdr_col};">
-                    {status_label}
-                </span>
-            </div>
-            <div class="metric-value-row">
-                <span class="metric-number">{display_number}</span>
-                <span class="metric-unit">{display_unit}</span>
-            </div>
-            {gauge_markup}
-            <div class="metric-footer" title="{note}">{note}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note), unsafe_allow_html=True)
 
 
 # ─── Section 2: Meteorological Briefing & Audience Advisories ─────────────────
-st.markdown('<div class="section-headline">Meteorological Assessment & Safety Advisories</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-headline">Weather Briefing & Advisories</div>', unsafe_allow_html=True)
 
 col_briefing, col_advisory = st.columns([3, 2], gap="medium")
 
@@ -941,12 +908,12 @@ with col_briefing:
     st.markdown(f"""
     <div class="console-card-panel">
         <div class="card-title-row">
-            <span class="card-main-title">Official Meteorological Briefing</span>
-            <span class="card-subtitle-tag">Synthesized Broadcast</span>
+            <span class="card-main-title">Weather Briefing</span>
+            <span class="card-subtitle-tag">T+24h Forecast</span>
         </div>
         <div class="briefing-callout">
             <div class="briefing-highlight-text">
-                Mild daytime warmth with exceptionally clear skies and low relative humidity expected across the metropolitan capital region over the next 24 hours.
+                Clear skies and low relative humidity forecast for the next 24 hours across Islamabad.
             </div>
             <div class="briefing-ribbon">
                 <span class="ribbon-chip">Peak Temp: {temp_val:.1f}°C</span>
@@ -972,8 +939,8 @@ with col_advisory:
     st.markdown("""
     <div class="console-card-panel">
         <div class="card-title-row">
-            <span class="card-main-title">Audience Safety Advisories</span>
-            <span class="card-subtitle-tag">Municipal Guidelines</span>
+            <span class="card-main-title">Safety Advisories</span>
+            <span class="card-subtitle-tag">By Audience</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1004,7 +971,7 @@ with col_advisory:
 
 
 # ─── Section 3: Interactive Atmospheric Trend Visualizer ──────────────────────
-st.markdown('<div class="section-headline">Atmospheric Telemetry & 24-Hour Predictive Trajectory</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-headline">Atmospheric Telemetry</div>', unsafe_allow_html=True)
 
 CHART_METRIC_MAP = {
     "temp_c":       "Temperature (°C)",
@@ -1132,7 +1099,7 @@ if hist_df is not None and not hist_df.empty:
 
 
 # ─── Section 4: ML Observability & Governance Ledger ──────────────────────────
-st.markdown('<div class="section-headline">ML Model Observability & Governance Ledger</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-headline">Model Observability</div>', unsafe_allow_html=True)
 
 tab_ledger, tab_shap, tab_drift, tab_audit = st.tabs([
     "Forecast Ledger",
