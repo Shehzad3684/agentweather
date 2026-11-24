@@ -35,6 +35,8 @@ from src.config import (
     FEATURE_GROUP_VERSION,
     TARGET_METRICS,
     TARGET_COLUMNS,
+    classify_epa_aqi,
+    pm25_to_epa_aqi,
 )
 
 logging.basicConfig(
@@ -160,41 +162,53 @@ def fetch_aqicn_current(lat: float = CITY_LAT, lon: float = CITY_LON, api_key: s
         return None
 
 
-def fetch_openmeteo_live_fallback(lat: float = CITY_LAT, lon: float = CITY_LON) -> Dict[str, Any]:
+def fetch_openmeteo_live(lat: float = CITY_LAT, lon: float = CITY_LON) -> Optional[Dict[str, Any]]:
     """
-    Reliable OpenMeteo fallback for live weather and air quality without requiring an API key.
-    Ensures the live ingestion pipeline never fails due to third-party rate limits or timeouts.
+    Fetches real-time current meteorological observations and air quality from Open-Meteo
+    at the exact coordinates (Islamabad 33.6844° N, 73.0479° E) with timezone=Asia/Karachi.
+    Also extracts the next 24h temperature trajectory to compute window extrema (temp_max_24h, temp_min_24h).
+    Returns parsed dictionary or None on network/API failure.
     """
-    logger.info("Querying OpenMeteo for live meteorological and air quality observation...")
+    logger.info(f"Querying OpenMeteo for live meteorological and air quality observation at ({lat}, {lon})...")
     weather_url = OPEN_METEO_FORECAST_URL
     w_params = {
         "latitude": lat,
         "longitude": lon,
         "current": "temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation,uv_index,cloud_cover",
-        "hourly": "precipitation_probability",
-        "timezone": "UTC",
+        "hourly": "temperature_2m,relative_humidity_2m,precipitation_probability",
+        "timezone": "Asia/Karachi",
+        "forecast_days": 2,
     }
     w_data = {}
+    hourly_temps = []
     hourly_probs = []
+
     for attempt in range(3):
         try:
             w_res = requests.get(weather_url, params=w_params, timeout=12)
             if w_res.status_code == 200:
                 payload = w_res.json()
                 w_data = payload.get("current", {})
-                hourly_probs = payload.get("hourly", {}).get("precipitation_probability", [])
+                hourly_dict = payload.get("hourly", {})
+                hourly_temps = hourly_dict.get("temperature_2m", [])[:24]
+                hourly_probs = hourly_dict.get("precipitation_probability", [])[:24]
                 break
         except Exception as exc:
             logger.warning(f"OpenMeteo weather fetch attempt {attempt + 1} error: {exc}")
             time.sleep(1)
 
-    # Air quality
+    if not w_data:
+        logger.warning("OpenMeteo weather fetch failed across 3 attempts.")
+        return None
+
+    # Air quality query
     aq_url = OPEN_METEO_AIR_QUALITY_URL
     aq_params = {
         "latitude": lat,
         "longitude": lon,
         "current": "us_aqi,pm10,pm2_5,nitrogen_dioxide,sulphur_dioxide,ozone,carbon_monoxide",
-        "timezone": "UTC",
+        "timezone": "Asia/Karachi",
+        "forecast_days": 2,
     }
     aq_data = {}
     for attempt in range(3):
@@ -208,105 +222,173 @@ def fetch_openmeteo_live_fallback(lat: float = CITY_LAT, lon: float = CITY_LON) 
             time.sleep(1)
 
     now_utc = datetime.datetime.now(datetime.timezone.utc).replace(minute=0, second=0, microsecond=0)
+    now_pkt = now_utc + datetime.timedelta(hours=5)
 
-    # Estimate rain prob
-    rain_prob = 15.0
-    if hourly_probs:
-        try:
-            rain_prob = float(hourly_probs[0])
-        except Exception:
-            pass
+    # Calculate 24h extrema from hourly trajectory if available
+    temp_max_24h = float(max(hourly_temps)) if hourly_temps else float(w_data.get("temperature_2m", 24.0)) + 4.0
+    temp_min_24h = float(min(hourly_temps)) if hourly_temps else float(w_data.get("temperature_2m", 16.0)) - 5.0
+    rain_prob = float(hourly_probs[0]) if hourly_probs else (100.0 if float(w_data.get("precipitation", 0.0)) > 0.1 else 15.0)
+
+    # AQI calculation with PM2.5 fallback
+    pm2_5_val = float(aq_data.get("pm2_5")) if aq_data.get("pm2_5") is not None else 15.0
+    raw_aqi = aq_data.get("us_aqi")
+    if raw_aqi is not None and not np.isnan(float(raw_aqi)) and float(raw_aqi) > 0:
+        aqi_val = float(raw_aqi)
+    else:
+        aqi_val = float(pm25_to_epa_aqi(pm2_5_val))
 
     return {
         "timestamp": now_utc,
-        "temp_c": float(w_data.get("temperature_2m", 22.0)),
-        "humidity_pct": float(w_data.get("relative_humidity_2m", 50.0)),
+        "timestamp_pkt": now_pkt.strftime("%Y-%m-%d %H:%M:%S PKT"),
+        "temp_c": float(w_data.get("temperature_2m", 18.0)),
+        "temp_max_24h": temp_max_24h,
+        "temp_min_24h": temp_min_24h,
+        "humidity_pct": float(w_data.get("relative_humidity_2m", 45.0)),
         "pressure_hpa": float(w_data.get("surface_pressure", 1013.25)),
-        "wind_speed": float(w_data.get("wind_speed_10m", 8.0)),
+        "wind_speed": float(w_data.get("wind_speed_10m", 6.0)),
         "wind_dir": float(w_data.get("wind_direction_10m", 180.0)),
         "precip_mm": float(w_data.get("precipitation", 0.0)),
         "rain_prob": float(rain_prob),
         "uv_index": float(w_data.get("uv_index", 2.0)),
         "cloud_cover": float(w_data.get("cloud_cover", 20.0)),
-        "aqi": float(aq_data.get("us_aqi", 45.0)),
-        "pm2_5": float(aq_data.get("pm2_5", 12.0)),
-        "pm10": float(aq_data.get("pm10", 20.0)),
-        "no2": float(aq_data.get("nitrogen_dioxide", 15.0)),
-        "so2": float(aq_data.get("sulphur_dioxide", 5.0)),
-        "co": float(aq_data.get("carbon_monoxide", 250.0)),
-        "o3": float(aq_data.get("ozone", 40.0)),
+        "aqi": aqi_val,
+        "pm2_5": pm2_5_val,
+        "pm10": float(aq_data.get("pm10", 25.0)) if aq_data.get("pm10") is not None else 25.0,
+        "no2": float(aq_data.get("nitrogen_dioxide", 15.0)) if aq_data.get("nitrogen_dioxide") is not None else 15.0,
+        "so2": float(aq_data.get("sulphur_dioxide", 5.0)) if aq_data.get("sulphur_dioxide") is not None else 5.0,
+        "co": float(aq_data.get("carbon_monoxide", 250.0)) if aq_data.get("carbon_monoxide") is not None else 250.0,
+        "o3": float(aq_data.get("ozone", 35.0)) if aq_data.get("ozone") is not None else 35.0,
+        "is_live": True,
+        "source": "Open-Meteo Live API (Asia/Karachi)",
     }
 
 
 def ingest_live_row(lat: float = CITY_LAT, lon: float = CITY_LON, city: str = CITY_NAME) -> pd.DataFrame:
     """
     Executes source fusion and timestamp alignment for current hour:
-    - Queries OpenWeatherMap (primary meteorology) and AQICN (primary air quality).
-    - Falls back to OpenMeteo for any missing fields.
-    - Floors timestamp to exact hour UTC.
-    - Averages overlapping temperature readings when both are present.
+    - Queries OpenWeatherMap (primary meteorology) and AQICN (primary air quality) if keys configured.
+    - Fuses with OpenMeteo live API (timezone=Asia/Karachi).
+    - If live APIs fail, falls back to local cache and visibly flags STALE / FALLBACK.
+    - Stores structured 'observed' metadata dictionary on DataFrame.attrs.
     """
     logger.info(f"Initiating live ingestion for {city} ({lat}, {lon})...")
     owm = fetch_openweather_current(lat, lon)
     aqicn = fetch_aqicn_current(lat, lon)
-    fallback = fetch_openmeteo_live_fallback(lat, lon)
+    live_openmeteo = fetch_openmeteo_live(lat, lon)
 
-    # Base timestamp floored to exact hour UTC
     now_utc = datetime.datetime.now(datetime.timezone.utc).replace(minute=0, second=0, microsecond=0)
+    now_pkt = now_utc + datetime.timedelta(hours=5)
 
-    # Source fusion
-    # Meteorology
-    temp_c = None
-    if owm and not np.isnan(owm.get("temp_c", np.nan)):
-        if aqicn and not np.isnan(aqicn.get("temp_c_station", np.nan)):
-            temp_c = (owm["temp_c"] + aqicn["temp_c_station"]) / 2.0
-            logger.info(f"Averaged temperature from OWM ({owm['temp_c']}°C) and AQICN ({aqicn['temp_c_station']}°C): {temp_c:.2f}°C")
-        else:
-            temp_c = owm["temp_c"]
-    elif fallback:
-        temp_c = fallback["temp_c"]
+    is_live = False
+    source = "Fallback"
+    temp_max_24h = 24.0
+    temp_min_24h = 14.0
 
-    humidity_pct = (owm["humidity_pct"] if owm and not np.isnan(owm.get("humidity_pct", np.nan)) else fallback["humidity_pct"])
-    pressure_hpa = (owm["pressure_hpa"] if owm and not np.isnan(owm.get("pressure_hpa", np.nan)) else fallback["pressure_hpa"])
-    wind_speed = (owm["wind_speed"] if owm and not np.isnan(owm.get("wind_speed", np.nan)) else fallback["wind_speed"])
-    wind_dir = (owm["wind_dir"] if owm and not np.isnan(owm.get("wind_dir", np.nan)) else fallback["wind_dir"])
-    precip_mm = (owm["precip_mm"] if owm and not np.isnan(owm.get("precip_mm", np.nan)) else fallback["precip_mm"])
-    rain_prob = (owm["rain_prob"] if owm and not np.isnan(owm.get("rain_prob", np.nan)) else fallback["rain_prob"])
-    uv_index = (owm["uv_index"] if owm and not np.isnan(owm.get("uv_index", np.nan)) else fallback["uv_index"])
-    cloud_cover = (owm["cloud_cover"] if owm and not np.isnan(owm.get("cloud_cover", np.nan)) else fallback["cloud_cover"])
+    if live_openmeteo:
+        is_live = True
+        source = live_openmeteo.get("source", "Live Open-Meteo")
+        temp_max_24h = live_openmeteo.get("temp_max_24h", 24.0)
+        temp_min_24h = live_openmeteo.get("temp_min_24h", 14.0)
 
-    # Air quality
-    aqi = (aqicn["aqi"] if aqicn and not np.isnan(aqicn.get("aqi", np.nan)) else fallback["aqi"])
-    pm2_5 = (aqicn["pm2_5"] if aqicn and not np.isnan(aqicn.get("pm2_5", np.nan)) else fallback["pm2_5"])
-    pm10 = (aqicn["pm10"] if aqicn and not np.isnan(aqicn.get("pm10", np.nan)) else fallback["pm10"])
-    no2 = (aqicn["no2"] if aqicn and not np.isnan(aqicn.get("no2", np.nan)) else fallback["no2"])
-    so2 = (aqicn["so2"] if aqicn and not np.isnan(aqicn.get("so2", np.nan)) else fallback["so2"])
-    co = (aqicn["co"] if aqicn and not np.isnan(aqicn.get("co", np.nan)) else fallback["co"])
-    o3 = (aqicn["o3"] if aqicn and not np.isnan(aqicn.get("o3", np.nan)) else fallback["o3"])
+        # Base from live Open-Meteo
+        base = dict(live_openmeteo)
 
-    row = {
-        "timestamp": now_utc,
-        "city": city,
-        "temp_c": float(temp_c),
-        "humidity_pct": float(humidity_pct),
-        "pressure_hpa": float(pressure_hpa),
-        "wind_speed": float(wind_speed),
-        "wind_dir": float(wind_dir),
-        "precip_mm": float(precip_mm),
-        "rain_prob": float(rain_prob),
-        "uv_index": float(uv_index),
-        "cloud_cover": float(cloud_cover),
-        "aqi": float(aqi),
-        "pm2_5": float(pm2_5),
-        "pm10": float(pm10),
-        "no2": float(no2),
-        "so2": float(so2),
-        "co": float(co),
-        "o3": float(o3),
+        # If OpenWeatherMap is present, fuse temperature
+        if owm and not np.isnan(owm.get("temp_c", np.nan)):
+            base["temp_c"] = round((base["temp_c"] + owm["temp_c"]) / 2.0, 2)
+            source += " + OWM"
+
+        # If AQICN is present, fuse AQI
+        if aqicn and not np.isnan(aqicn.get("aqi", np.nan)):
+            base["aqi"] = round((base["aqi"] + aqicn["aqi"]) / 2.0, 1)
+            if not np.isnan(aqicn.get("pm2_5", np.nan)):
+                base["pm2_5"] = aqicn["pm2_5"]
+            source += " + AQICN"
+
+        row = base
+        row["city"] = city
+        row["timestamp"] = now_utc
+    else:
+        # Fallback to local cache if network/API failure
+        logger.warning("All live telemetry APIs unavailable. Engaging local fallback cache...")
+        parquet_path = DATA_DIR / "historical_features.parquet"
+        cached_row = {}
+        if parquet_path.exists():
+            df_hist = pd.read_parquet(parquet_path)
+            cached_row = df_hist.iloc[-1].to_dict()
+
+        row = {
+            "timestamp": now_utc,
+            "city": city,
+            "temp_c": float(cached_row.get("temp_c", 20.0)),
+            "humidity_pct": float(cached_row.get("humidity_pct", 45.0)),
+            "pressure_hpa": float(cached_row.get("pressure_hpa", 1013.2)),
+            "wind_speed": float(cached_row.get("wind_speed", 5.0)),
+            "wind_dir": float(cached_row.get("wind_dir", 180.0)),
+            "precip_mm": float(cached_row.get("precip_mm", 0.0)),
+            "rain_prob": float(cached_row.get("rain_prob", 10.0)),
+            "uv_index": float(cached_row.get("uv_index", 2.0)),
+            "cloud_cover": float(cached_row.get("cloud_cover", 20.0)),
+            "aqi": float(cached_row.get("aqi", 45.0)),
+            "pm2_5": float(cached_row.get("pm2_5", 12.0)),
+            "pm10": float(cached_row.get("pm10", 20.0)),
+            "no2": float(cached_row.get("no2", 15.0)),
+            "so2": float(cached_row.get("so2", 5.0)),
+            "co": float(cached_row.get("co", 250.0)),
+            "o3": float(cached_row.get("o3", 35.0)),
+        }
+        is_live = False
+        source = "STALE / FALLBACK"
+        temp_max_24h = row["temp_c"] + 4.0
+        temp_min_24h = row["temp_c"] - 5.0
+
+    # Structured observed payload
+    observed = {
+        "temp_c": round(float(row["temp_c"]), 1),
+        "humidity_pct": int(round(float(row["humidity_pct"]))),
+        "pressure_hpa": round(float(row["pressure_hpa"]), 1),
+        "wind_speed": round(float(row["wind_speed"]), 1),
+        "wind_dir": int(round(float(row["wind_dir"]))),
+        "precip_mm": round(float(row["precip_mm"]), 1),
+        "rain_prob": int(round(float(row["rain_prob"]))),
+        "uv_index": round(float(row["uv_index"]), 1),
+        "cloud_cover": int(round(float(row["cloud_cover"]))),
+        "aqi": round(float(row["aqi"]), 1),
+        "timestamp_utc": now_utc.strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "timestamp_pkt": now_pkt.strftime("%Y-%m-%d %H:%M:%S PKT"),
+        "is_live": is_live,
+        "source": source,
+        "temp_max_24h": round(temp_max_24h, 1),
+        "temp_min_24h": round(temp_min_24h, 1),
     }
 
-    df = pd.DataFrame([row])
-    logger.info("Live row successfully ingested and fused.")
+    # Ensure clean row dictionary for DataFrame
+    df_dict = {
+        "timestamp": now_utc,
+        "city": city,
+        "temp_c": float(row["temp_c"]),
+        "humidity_pct": float(row["humidity_pct"]),
+        "pressure_hpa": float(row["pressure_hpa"]),
+        "wind_speed": float(row["wind_speed"]),
+        "wind_dir": float(row["wind_dir"]),
+        "precip_mm": float(row["precip_mm"]),
+        "rain_prob": float(row["rain_prob"]),
+        "uv_index": float(row["uv_index"]),
+        "cloud_cover": float(row["cloud_cover"]),
+        "aqi": float(row["aqi"]),
+        "pm2_5": float(row["pm2_5"]),
+        "pm10": float(row["pm10"]),
+        "no2": float(row["no2"]),
+        "so2": float(row["so2"]),
+        "co": float(row["co"]),
+        "o3": float(row["o3"]),
+    }
+
+    df = pd.DataFrame([df_dict])
+    df.attrs["observed"] = observed
+    df.attrs["temp_max_24h"] = temp_max_24h
+    df.attrs["temp_min_24h"] = temp_min_24h
+    logger.info(f"Live row ingested: Temp={observed['temp_c']}°C, AQI={observed['aqi']}, Live={is_live}, Source={source}")
     return df
 
 
@@ -354,8 +436,10 @@ def impute_missing_data(df: pd.DataFrame) -> pd.DataFrame:
 def build_engineered_features(df: pd.DataFrame, is_training: bool = False) -> pd.DataFrame:
     """
     Computes all temporal, circular, rate-of-change, and rolling features.
+    Aligns diurnal cycles with Asia/Karachi (UTC+5) solar day.
     Creates 24-hour shifted targets if is_training is True or if historical data available.
     """
+    saved_attrs = dict(df.attrs)
     df = df.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df = df.sort_values("timestamp").reset_index(drop=True)
@@ -363,14 +447,20 @@ def build_engineered_features(df: pd.DataFrame, is_training: bool = False) -> pd
     # Impute missing values
     df = impute_missing_data(df)
 
-    # 1. Temporal cyclical features
-    dt = df["timestamp"].dt
-    df["hour"] = dt.hour
-    df["day_of_week"] = dt.dayofweek
-    df["month"] = dt.month
+    # 1. Temporal cyclical features aligned to Asia/Karachi (UTC+5)
+    ts = pd.to_datetime(df["timestamp"])
+    if ts.dt.tz is not None:
+        local_ts = ts.dt.tz_convert("Asia/Karachi")
+    else:
+        local_ts = ts + pd.Timedelta(hours=5)
 
-    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24.0)
-    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24.0)
+    df["local_hour"] = local_ts.dt.hour
+    df["hour"] = df["local_hour"]
+    df["day_of_week"] = local_ts.dt.dayofweek
+    df["month"] = local_ts.dt.month
+
+    df["hour_sin"] = np.sin(2 * np.pi * df["local_hour"] / 24.0)
+    df["hour_cos"] = np.cos(2 * np.pi * df["local_hour"] / 24.0)
     df["month_sin"] = np.sin(2 * np.pi * (df["month"] - 1) / 12.0)
     df["month_cos"] = np.cos(2 * np.pi * (df["month"] - 1) / 12.0)
 
@@ -398,6 +488,7 @@ def build_engineered_features(df: pd.DataFrame, is_training: bool = False) -> pd
     df["timestamp_epoch"] = (df["timestamp"].astype("int64") // 10**6).astype("int64")
     df["timestamp_str"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
 
+    df.attrs.update(saved_attrs)
     return df
 
 
@@ -429,10 +520,18 @@ def save_features_to_hopsworks(df: pd.DataFrame, feature_group_name: str = FEATU
         clean_df["timestamp"] = pd.to_datetime(clean_df["timestamp"])
 
     # Ensure integer schema compatibility with Hopsworks
-    int_cols = ["humidity_pct", "wind_dir", "cloud_cover", "aqi", "hour", "day_of_week", "month"]
-    for col in int_cols:
+    int32_cols = ["hour", "day_of_week", "month"]
+    for col in int32_cols:
+        if col in clean_df.columns:
+            clean_df[col] = clean_df[col].round().astype("int32")
+
+    int64_cols = ["humidity_pct", "wind_dir", "cloud_cover", "aqi"]
+    for col in int64_cols:
         if col in clean_df.columns:
             clean_df[col] = clean_df[col].round().astype("int64")
+
+    if "local_hour" in clean_df.columns:
+        clean_df = clean_df.drop(columns=["local_hour"])
 
     logger.info(f"Connecting to Hopsworks Feature Group '{feature_group_name}' (v{version})...")
     feature_group = fs.get_or_create_feature_group(
@@ -464,14 +563,19 @@ def save_features_to_hopsworks(df: pd.DataFrame, feature_group_name: str = FEATU
 
 def load_features_from_hopsworks(feature_group_name: str = FEATURE_GROUP_WEATHER, version: int = FEATURE_GROUP_VERSION, limit: Optional[int] = None) -> pd.DataFrame:
     """
-    Reads records from Hopsworks Feature Store.
+    Reads records from Hopsworks Feature Store, strictly sorted latest first (DESC).
     """
     project = get_hopsworks_project()
     fs = project.get_feature_store()
     fg = fs.get_feature_group(name=feature_group_name, version=version)
     df = fg.read()
+    if "timestamp" in df.columns:
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df = df.sort_values("timestamp", ascending=False).reset_index(drop=True)
+    elif "timestamp_epoch" in df.columns:
+        df = df.sort_values("timestamp_epoch", ascending=False).reset_index(drop=True)
     if limit:
-        df = df.tail(limit)
+        df = df.head(limit)
     return df
 
 

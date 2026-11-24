@@ -44,6 +44,7 @@ from src.config import (
     FEATURE_GROUP_AGENT_CALL_LOG,
     FEATURE_GROUP_DRIFT_LOG,
     FEATURE_GROUP_VERSION,
+    classify_epa_aqi,
 )
 from src.features import get_hopsworks_project, ingest_live_row, build_engineered_features
 from src.drift import run_ks_data_drift_test, evaluate_model_drift, trigger_retraining_pipeline, log_drift_to_hopsworks
@@ -65,6 +66,7 @@ MODELS_DIR = BASE_DIR / "models"
 class AgentState(TypedDict):
     city: str
     timestamp: str
+    observed: Dict[str, Any]
     current_features: Dict[str, Any]
     forecasts: Dict[str, float]
     forecast_ledger_entries: List[Dict[str, Any]]
@@ -83,6 +85,7 @@ def forecast_node(state: AgentState) -> AgentState:
     """
     Loads latest engineered features and champion models,
     generates 24-hour ahead predictions across all 8 target metrics,
+    computes 24h temperature extrema (temp_max_24h and temp_min_24h),
     and constructs ledger entries.
     """
     logger.info("Executing Node 1: Forecast Agent...")
@@ -90,20 +93,26 @@ def forecast_node(state: AgentState) -> AgentState:
     now_dt = datetime.datetime.fromisoformat(state.get("timestamp", datetime.datetime.now(datetime.timezone.utc).isoformat()))
     target_dt = now_dt + datetime.timedelta(hours=24)
 
-    # 1. Load latest feature row
+    # 1. Load latest feature row and observed metadata
     current_features = state.get("current_features", {})
-    if not current_features:
-        # Load from local cache or fetch live
-        parquet_path = DATA_DIR / "historical_features.parquet"
-        if parquet_path.exists():
-            df_hist = pd.read_parquet(parquet_path)
-            latest_row = df_hist.iloc[-1].to_dict()
-            current_features = latest_row
-        else:
-            live_df = ingest_live_row(city=city)
-            eng_df = build_engineered_features(live_df)
-            current_features = eng_df.iloc[-1].to_dict()
+    observed = state.get("observed", {})
+    temp_max_24h = None
+    temp_min_24h = None
+
+    if not current_features or not observed:
+        live_df = ingest_live_row(city=city)
+        eng_df = build_engineered_features(live_df)
+        current_features = eng_df.iloc[-1].to_dict()
+        observed = eng_df.attrs.get("observed", {})
+        temp_max_24h = eng_df.attrs.get("temp_max_24h")
+        temp_min_24h = eng_df.attrs.get("temp_min_24h")
         state["current_features"] = current_features
+        state["observed"] = observed
+
+    if temp_max_24h is None:
+        temp_max_24h = observed.get("temp_max_24h", observed.get("temp_c", 20.0) + 4.0)
+    if temp_min_24h is None:
+        temp_min_24h = observed.get("temp_min_24h", observed.get("temp_c", 20.0) - 5.0)
 
     # 2. Load training results to inspect features and model types
     results_path = DATA_DIR / "training_results.json"
@@ -144,7 +153,6 @@ def forecast_node(state: AgentState) -> AgentState:
                 lstm = WeatherLSTM(input_dim=x_vec.shape[1], hidden_dim=32, num_layers=1)
                 lstm.load_state_dict(torch.load(model_pt, weights_only=True))
                 lstm.eval()
-                # Create a 24-step synthetic sequence repeating current scaled feature vector
                 x_scaled = scaler.transform(x_vec) if scaler else x_vec
                 x_seq = np.repeat(x_scaled[np.newaxis, :, :], 24, axis=1)
                 with torch.no_grad():
@@ -165,17 +173,24 @@ def forecast_node(state: AgentState) -> AgentState:
         except Exception as exc:
             logger.warning(f"Error predicting with {metric} champion: {exc}. Using persistence fallback.")
 
-        # Fallback to persistence if prediction failed or model missing
+        # Fallback to current observation if prediction failed
         if pred_val is None or np.isnan(pred_val):
-            pred_val = float(current_features.get(metric, 20.0))
+            pred_val = float(observed.get(metric, current_features.get(metric, 20.0)))
 
-        # Enforce physical reality boundaries
+        # Enforce physical reality boundaries & calibration
         if metric in ["aqi", "precip_mm", "uv_index", "wind_speed"]:
             pred_val = max(0.0, pred_val)
         elif metric in ["humidity_pct", "rain_prob"]:
             pred_val = min(100.0, max(0.0, pred_val))
         elif metric == "wind_dir":
             pred_val = float(pred_val % 360.0)
+
+        # Temperature bias fix: ensure t+24h point forecast respects local diurnal limits
+        if metric == "temp_c":
+            if pred_val < temp_min_24h - 3.0:
+                pred_val = max(temp_min_24h, pred_val)
+            elif pred_val > temp_max_24h + 3.0:
+                pred_val = min(temp_max_24h, pred_val)
 
         pred_val = round(pred_val, 2)
         forecasts[metric] = pred_val
@@ -191,9 +206,13 @@ def forecast_node(state: AgentState) -> AgentState:
             "city": city,
         })
 
+    # Window extrema targets for 24h outlook
+    forecasts["temp_max_24h"] = round(float(temp_max_24h), 1)
+    forecasts["temp_min_24h"] = round(float(temp_min_24h), 1)
+
     state["forecasts"] = forecasts
     state["forecast_ledger_entries"] = ledger_entries
-    logger.info(f"Node 1 completed. 24h Predictions: {forecasts}")
+    logger.info(f"Node 1 completed. 24h Predictions: {forecasts}, Extrema: High={temp_max_24h}°C, Low={temp_min_24h}°C")
     return state
 
 
@@ -202,7 +221,8 @@ def forecast_node(state: AgentState) -> AgentState:
 # =============================================================================
 def alert_node(state: AgentState) -> AgentState:
     """
-    Evaluates 24-hour predictions against fixed hazard thresholds.
+    Evaluates 24-hour predictions against official US EPA AQI 6-tier standards
+    and fixed meteorological hazard thresholds.
     Calls Groq LLM (with template fallback) to generate tailored safety advisories
     for General Public, Sensitive Groups, and Outdoor Workers.
     Logs LLM call into audit ledger.
@@ -212,8 +232,52 @@ def alert_node(state: AgentState) -> AgentState:
     city = state.get("city", CITY_NAME)
     active_alerts = []
 
-    # Evaluate hazard rules
+    # 1. Evaluate AQI under official US EPA standards
+    aqi_val = float(forecasts.get("aqi", 0.0))
+    epa_cat, text_col, bg_col, bdr_col, note = classify_epa_aqi(aqi_val)
+
+    if aqi_val > 100.0:
+        if aqi_val <= 150.0:
+            active_alerts.append({
+                "metric": "aqi",
+                "value": aqi_val,
+                "category": "Unhealthy for Sensitive Groups",
+                "threshold": "101 - 150 AQI",
+                "description": f"US EPA AQI {aqi_val:.1f} is Unhealthy for Sensitive Groups (101 to 150)",
+                "reason": "Active advisory for children, elderly, and respiratory/cardiovascular patients.",
+            })
+        elif aqi_val <= 200.0:
+            active_alerts.append({
+                "metric": "aqi",
+                "value": aqi_val,
+                "category": "Unhealthy",
+                "threshold": "151 - 200 AQI",
+                "description": f"US EPA AQI {aqi_val:.1f} is Unhealthy (151 to 200)",
+                "reason": "Air quality is Unhealthy according to US EPA standards. General public should limit prolonged outdoor exertion and consider N95/FFP2 masks.",
+            })
+        elif aqi_val <= 300.0:
+            active_alerts.append({
+                "metric": "aqi",
+                "value": aqi_val,
+                "category": "Very Unhealthy",
+                "threshold": "201 - 300 AQI",
+                "description": f"US EPA AQI {aqi_val:.1f} is Very Unhealthy (201 to 300)",
+                "reason": "Health alert: serious risk of respiratory health effects for everyone. Avoid strenuous outdoor activities.",
+            })
+        else:
+            active_alerts.append({
+                "metric": "aqi",
+                "value": aqi_val,
+                "category": "Hazardous",
+                "threshold": "> 300 AQI",
+                "description": f"US EPA AQI {aqi_val:.1f} is Hazardous (> 300)",
+                "reason": "Emergency warning: entire population is likely to experience severe health impacts.",
+            })
+
+    # 2. Evaluate remaining metrics against HAZARD_THRESHOLDS
     for metric, val in forecasts.items():
+        if metric in ["aqi", "temp_max_24h", "temp_min_24h"]:
+            continue
         rule = HAZARD_THRESHOLDS.get(metric)
         if not rule:
             continue
@@ -233,6 +297,7 @@ def alert_node(state: AgentState) -> AgentState:
             active_alerts.append({
                 "metric": metric,
                 "value": val,
+                "category": "Hazard",
                 "threshold": f"{min_thresh} - {max_thresh} {rule['unit']}",
                 "description": rule["desc"],
                 "reason": hazard_desc,
@@ -256,8 +321,8 @@ def alert_node(state: AgentState) -> AgentState:
 
     prompt = f"""You are the Chief Safety Meteorologist for {city}.
 Review these 24-hour weather predictions:
-- Air Quality Index (AQI): {forecasts.get('aqi')} (US EPA scale)
-- Temperature: {forecasts.get('temp_c')} °C
+- Air Quality Index (AQI): {forecasts.get('aqi')} ({epa_cat} per US EPA scale)
+- Temperature (t+24h): {forecasts.get('temp_c')} °C (24h Peak: {forecasts.get('temp_max_24h')} °C, 24h Low: {forecasts.get('temp_min_24h')} °C)
 - Precipitation: {forecasts.get('precip_mm')} mm (Rain Probability: {forecasts.get('rain_prob')} %)
 - Humidity: {forecasts.get('humidity_pct')} %
 - UV Index: {forecasts.get('uv_index')}
@@ -267,13 +332,13 @@ Active Hazard Triggers: {json.dumps(active_alerts)}
 
 Provide concise, highly actionable safety advisories separated strictly into these 3 sections:
 [GENERAL PUBLIC]
-Concise practical guidance for daily life, commuting, and standard activities.
+Concise practical guidance for daily life, commuting, and standard activities. If AQI is >= 151 (Unhealthy), advise reducing prolonged exertion and recommending masks if sensitive.
 
 [SENSITIVE GROUPS]
-Targeted precautions for children, the elderly, asthma sufferers, and individuals with cardiovascular conditions.
+Targeted precautions for children, the elderly, asthma sufferers, and individuals with cardiovascular conditions. If AQI is >= 101, advise limiting strenuous outdoor activity.
 
 [OUTDOOR WORKERS]
-Mandatory occupational safety guidance for construction laborers, delivery riders, and agricultural workers.
+Mandatory occupational safety guidance for construction laborers, delivery riders, and agricultural workers. If AQI >= 151, recommend N95 masks and scheduled breaks.
 """
     call_log_entry["prompt"] = prompt
 
@@ -287,7 +352,7 @@ Mandatory occupational safety guidance for construction laborers, delivery rider
             resp = client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are a professional meteorological safety advisor. Be concise, structured, and factual."},
+                    {"role": "system", "content": "You are a professional meteorological safety advisor. Be concise, structured, factual, and strictly follow official US EPA AQI standards."},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=650,
@@ -305,7 +370,6 @@ Mandatory occupational safety guidance for construction laborers, delivery rider
 
     if llm_succeeded and raw_response:
         call_log_entry["response"] = raw_response
-        # Parse sections
         parts = {"general": "", "sensitive": "", "outdoor": ""}
         current_section = "general"
         for line in raw_response.splitlines():
@@ -321,31 +385,30 @@ Mandatory occupational safety guidance for construction laborers, delivery rider
         advisories = {k: v.strip() for k, v in parts.items()}
     else:
         # Deterministic Python String Template Fallback
-        logger.info("Generating deterministic fallback advisories...")
-        if active_alerts:
-            hazard_summary = ", ".join([a["description"] for a in active_alerts])
-            advisories["general"] = (
-                f"Hazard Alert in {city}: {hazard_summary}. Expected temperature is {forecasts.get('temp_c')}°C with AQI at {forecasts.get('aqi')}. "
-                f"Stay informed, plan outdoor activities during cooler or cleaner hours, and keep rain gear on hand if rain probability ({forecasts.get('rain_prob')}%) is elevated."
-            )
-            advisories["sensitive"] = (
-                f"Sensitive Health Warning: Due to {hazard_summary}, children, older adults, and individuals with respiratory or heart conditions "
-                f"should limit strenuous outdoor exertion. Keep prescribed inhalers and medications accessible and monitor indoor air ventilation."
-            )
-            advisories["outdoor"] = (
-                f"Occupational Hazard Protocol: Outdoor crews in {city} must adhere to safety limits. With wind speed at {forecasts.get('wind_speed')} km/h "
-                f"and active hazards ({hazard_summary}), establish scheduled hydration and rest breaks in shaded or ventilated quarters."
-            )
+        logger.info("Generating deterministic fallback advisories adhering to US EPA tiers...")
+        if aqi_val > 150.0:
+            aq_public = f"Air quality is classified as Unhealthy (AQI {aqi_val:.1f}). General public should reduce prolonged or heavy outdoor exertion."
+            aq_sensitive = f"Children, elderly individuals, and people with respiratory or heart disease must avoid prolonged outdoor exertion and wear N95/FFP2 masks outdoors."
+            aq_outdoor = f"Outdoor crews should wear protective N95 masks, take frequent breaks in indoor ventilated zones, and rotate heavy tasks."
+        elif aqi_val > 100.0:
+            aq_public = f"Air quality is Unhealthy for Sensitive Groups (AQI {aqi_val:.1f}). General public can engage in normal outdoor activities."
+            aq_sensitive = f"Sensitive individuals (asthma, heart disease, elderly, children) should limit prolonged or strenuous outdoor exertion."
+            aq_outdoor = f"Standard operational protocols with monitoring for sensitive crew members."
         else:
-            advisories["general"] = f"Normal Weather Conditions for {city}. Forecast temperature is {forecasts.get('temp_c')}°C and AQI is {forecasts.get('aqi')}. Standard daily routines and commutes may proceed normally."
-            advisories["sensitive"] = f"Air quality and temperatures are within standard ranges. No special health restrictions required today."
-            advisories["outdoor"] = f"Standard workplace safety rules apply. Normal operational workflows for outdoor and field teams."
+            aq_public = f"Air quality is {epa_cat} (AQI {aqi_val:.1f}). Standard routines and commutes can proceed normally."
+            aq_sensitive = f"Air quality is within acceptable limits. No special restrictions for sensitive groups."
+            aq_outdoor = f"Standard workplace safety rules apply."
+
+        advisories["general"] = f"- **Air Quality:** {aq_public}\n- **Thermal Outlook:** Daytime high near {forecasts.get('temp_max_24h')}°C and low near {forecasts.get('temp_min_24h')}°C.\n- **Commuting:** Rain probability is {forecasts.get('rain_prob')}%; roads clear."
+        advisories["sensitive"] = f"- **Respiratory Precautions:** {aq_sensitive}\n- **Hydration:** Maintain regular fluid intake with humidity around {forecasts.get('humidity_pct')}%."
+        advisories["outdoor"] = f"- **Occupational Guidelines:** {aq_outdoor}\n- **Wind & Sun:** Winds at {forecasts.get('wind_speed')} km/h, UV index at {forecasts.get('uv_index')}."
 
         call_log_entry["response"] = json.dumps(advisories)
 
     state["alert_advisories"] = advisories
     state.setdefault("audit_call_logs", []).append(call_log_entry)
     logger.info(f"Node 2 completed. Active alerts: {len(active_alerts)}.")
+    return state
     return state
 
 
@@ -440,21 +503,158 @@ def drift_node(state: AgentState) -> AgentState:
     return state
 
 
+def validate_report_grounding(report_text: str, payload: Dict[str, Any]) -> bool:
+    """
+    Validates that the generated LLM text does not contradict canonical payload facts:
+    - If cloud_cover_pct > 10, cannot claim clear skies or unbroken sunshine.
+    - Ensures report is substantial (at least 100 characters).
+    """
+    if not report_text or len(report_text) < 100:
+        return False
+    txt_lower = report_text.lower()
+    obs = payload.get("observed") or payload.get("observed_current", {})
+    cloud_pct = obs.get("cloud_cover_pct", 0)
+
+    # Cloud cover contradiction check (Bug 4)
+    if cloud_pct > 10:
+        clear_terms = ["clear skies", "clear sky", "crystal clear", "completely clear", "unbroken by cloud"]
+        if any(term in txt_lower for term in clear_terms):
+            logger.warning(f"Report validation rejected: text claims clear skies but observed cloud cover is {cloud_pct}%.")
+            return False
+
+    return True
+
+
+def generate_grounded_report(payload: Dict[str, Any]) -> str:
+    """
+    Generates a deterministic, journalistic, 100% grounded 3-paragraph weather report
+    strictly adhering to canonical pre-rounded payload values.
+    """
+    city = payload["city"]
+    day_period = payload.get("day_period", "day")
+    greeting = f"Good {day_period}, {city}."
+    obs = payload.get("observed") or payload.get("observed_current", {})
+    fc = payload.get("forecast_24h") or payload.get("forecast_next_24h", {})
+    alerts = payload.get("active_alerts", [])
+
+    cloud_pct = obs.get("cloud_cover_pct", 20)
+    cloud_desc = (
+        "clear skies" if cloud_pct <= 10
+        else f"partly cloudy skies with {cloud_pct}% cloud cover" if cloud_pct <= 50
+        else f"mostly overcast conditions with {cloud_pct}% cloud cover"
+    )
+
+    temp_c = obs.get("temp_c", obs.get("temperature_c", 18.0))
+    hum_pct = obs.get("humidity_pct", obs.get("relative_humidity_pct", 50))
+    press_hpa = obs.get("pressure_hpa", obs.get("surface_pressure_hpa", 1013.2))
+    obs_aqi = obs.get("aqi", obs.get("air_quality_index", 50.0))
+    obs_aqi_cat = obs.get("aqi_category", obs.get("air_quality_category", "Good"))
+
+    fc_max = fc.get("temp_max_24h", fc.get("daytime_high_temperature_c", 22.0))
+    fc_min = fc.get("temp_min_24h", fc.get("overnight_low_temperature_c", 11.0))
+    fc_target = fc.get("temp_c", fc.get("target_temperature_c", 15.0))
+    fc_aqi = fc.get("aqi", fc.get("air_quality_index", 50.0))
+    fc_aqi_cat = fc.get("aqi_category", fc.get("air_quality_category", "Good"))
+    fc_rain = fc.get("rain_prob_pct", fc.get("rain_probability_pct", 0))
+    fc_precip = fc.get("precip_mm", fc.get("precipitation_mm", 0.0))
+    fc_uv = fc.get("uv_index", 2.0)
+    fc_wind_spd = fc.get("wind_speed_kmh", 5.0)
+    fc_wind_dir = fc.get("wind_dir_deg", 180)
+
+    p1 = (
+        f"{greeting} Current monitoring station telemetry records an observed temperature of {temp_c}°C "
+        f"under {cloud_desc}, with relative humidity at {hum_pct}% and surface pressure steady at {press_hpa} hPa. "
+        f"Over the upcoming 24-hour cycle, atmospheric models indicate daytime warmth peaking at a 24-hour high of {fc_max}°C, "
+        f"with overnight cooling descending toward {fc_min}°C, and the t+24h forward point forecast settling near {fc_target}°C."
+    )
+
+    p2 = (
+        f"Turning to environmental and air quality surveillance, the current regional Air Quality Index is measured at {obs_aqi} ({obs_aqi_cat}) "
+        f"and is predicted to average around {fc_aqi} ({fc_aqi_cat}) over the next 24 hours under official US EPA criteria. "
+        f"Precipitation chances remain at {fc_rain}% with expected accumulations limited to {fc_precip} mm, "
+        f"while surface winds circulate from {fc_wind_dir}° at approximately {fc_wind_spd} km/h."
+    )
+
+    if alerts:
+        alert_summary = "; ".join([a.get("description", str(a)) for a in alerts])
+        p3 = (
+            f"Public safety advisories have been issued across the capital region: {alert_summary}. "
+            f"Given that air quality is categorized as {fc_aqi_cat}, sensitive individuals and outdoor personnel should follow recommended precautions. "
+            f"The solar UV index is anticipated at {fc_uv}, and citizens are encouraged to monitor live updates on the AgentWeather terminal."
+        )
+    else:
+        p3 = (
+            f"All predicted atmospheric and environmental parameters remain within nominal safety baselines for the capital region. "
+            f"The solar radiation index is forecast at {fc_uv}, indicating minimal sunburn risk outside peak solar hours. "
+            f"Standard municipal workflows, outdoor labor schedules, and daily commutes may proceed according to normal guidelines."
+        )
+
+    return f"{p1}\n\n{p2}\n\n{p3}"
+
+
 # =============================================================================
 # 5. Node 4: Weather Report Agent
 # =============================================================================
 def weather_report_node(state: AgentState) -> AgentState:
     """
-    Runs daily at 00:00 UTC or immediately upon active hazard triggers.
-    Drafts a 3-paragraph broadcast news-style weather report combining forecasts and active warnings.
+    Drafts a 3-paragraph broadcast news-style weather report combining forecasts,
+    live observed conditions, and active hazard warnings.
+    Strictly grounds all numerical figures in a canonical pre-rounded payload.
     Logs LLM call into agent_call_log.
     """
     logger.info("Executing Node 4: Weather Report Agent...")
     city = state.get("city", CITY_NAME)
     forecasts = state.get("forecasts", {})
+    observed = state.get("observed", {})
     active_alerts = state.get("active_alerts", [])
+
     now_dt = datetime.datetime.now(datetime.timezone.utc)
     now_iso = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+    pkt_dt = now_dt + datetime.timedelta(hours=5)
+    pkt_str = pkt_dt.strftime("%Y-%m-%d %H:%M:%S PKT")
+
+    local_hour = pkt_dt.hour
+    if 5 <= local_hour < 12:
+        day_period = "morning"
+    elif 12 <= local_hour < 17:
+        day_period = "afternoon"
+    elif 17 <= local_hour < 21:
+        day_period = "evening"
+    else:
+        day_period = "night"
+
+    obs_aqi = float(observed.get("aqi", forecasts.get("aqi", 45.0)))
+    fc_aqi = float(forecasts.get("aqi", 45.0))
+
+    canonical_payload = {
+        "city": city,
+        "cycle_utc": now_iso + " UTC",
+        "local_time_pkt": pkt_str,
+        "day_period": day_period,
+        "observed": {
+            "temp_c": round(float(observed.get("temp_c", forecasts.get("temp_c", 18.0))), 1),
+            "humidity_pct": int(round(float(observed.get("humidity_pct", forecasts.get("humidity_pct", 50.0))))),
+            "pressure_hpa": round(float(observed.get("pressure_hpa", 1013.2)), 1),
+            "cloud_cover_pct": int(round(float(observed.get("cloud_cover", 20.0)))),
+            "wind_speed_kmh": round(float(observed.get("wind_speed", forecasts.get("wind_speed", 5.0))), 1),
+            "aqi": round(obs_aqi, 1),
+            "aqi_category": classify_epa_aqi(obs_aqi)[0],
+        },
+        "forecast_24h": {
+            "temp_c": round(float(forecasts.get("temp_c", 20.0)), 1),
+            "temp_max_24h": round(float(forecasts.get("temp_max_24h", forecasts.get("temp_c", 20.0) + 4.0)), 1),
+            "temp_min_24h": round(float(forecasts.get("temp_min_24h", forecasts.get("temp_c", 20.0) - 4.0)), 1),
+            "humidity_pct": int(round(float(forecasts.get("humidity_pct", 50.0)))),
+            "precip_mm": round(float(forecasts.get("precip_mm", 0.0)), 1),
+            "rain_prob_pct": int(round(float(forecasts.get("rain_prob", 10.0)))),
+            "uv_index": round(float(forecasts.get("uv_index", 2.0)), 1),
+            "wind_speed_kmh": round(float(forecasts.get("wind_speed", 5.0)), 1),
+            "wind_dir_deg": int(round(float(forecasts.get("wind_dir", 180.0)))),
+            "aqi": round(fc_aqi, 1),
+            "aqi_category": classify_epa_aqi(fc_aqi)[0],
+        },
+        "active_alerts": active_alerts,
+    }
 
     call_log_entry = {
         "timestamp": now_iso,
@@ -468,22 +668,19 @@ def weather_report_node(state: AgentState) -> AgentState:
     }
 
     prompt = f"""You are a television broadcast meteorologist delivering the official 24-hour weather forecast for {city}.
-Current Date/Time: {now_iso} UTC.
-
-Key Forecast Metrics for the next 24 Hours:
-- Temperature: {forecasts.get('temp_c')} °C
-- Air Quality Index (AQI): {forecasts.get('aqi')}
-- Precipitation: {forecasts.get('precip_mm')} mm (Rain Probability: {forecasts.get('rain_prob')} %)
-- Relative Humidity: {forecasts.get('humidity_pct')} %
-- UV Index: {forecasts.get('uv_index')}
-- Wind: {forecasts.get('wind_speed')} km/h ({forecasts.get('wind_dir')}°)
-
-Active Warnings: {json.dumps(active_alerts)}
+You must strictly follow these grounding rules:
+1. Ground greetings and time-of-day remarks in local time ({pkt_str}, period: {day_period}).
+2. Distinguish current observed conditions ({canonical_payload['observed']['temp_c']}°C, {canonical_payload['observed']['cloud_cover_pct']}% cloud cover) from the 24-hour forecast.
+3. If cloud_cover_pct is greater than 10%, DO NOT state the sky is "unbroken by cloud" or "completely clear". Report cloud cover as {canonical_payload['observed']['cloud_cover_pct']}%.
+4. Clearly distinguish the 24h Peak Temperature ({canonical_payload['forecast_24h']['temp_max_24h']}°C) and Overnight Low ({canonical_payload['forecast_24h']['temp_min_24h']}°C) from the t+24h point forecast ({canonical_payload['forecast_24h']['temp_c']}°C). Never call an overnight/morning low the "Peak Temp".
+5. Use the exact US EPA Air Quality category: '{canonical_payload['forecast_24h']['aqi_category']}' for forecast AQI {canonical_payload['forecast_24h']['aqi']}.
+6. Use exact numbers matching this canonical payload:
+{json.dumps(canonical_payload, indent=2)}
 
 Write a professional, compelling, 3-paragraph broadcast news script:
-- Paragraph 1: Headline and general weather outlook (temperature, sky conditions, feel).
-- Paragraph 2: Environmental conditions and Air Quality analysis (AQI, breathing safety, PM levels).
-- Paragraph 3: Hazard warnings, public precautions, and daily planning advice for citizens.
+- Paragraph 1: Headline and general weather outlook (current temp, sky conditions, 24h Peak and Low temperatures).
+- Paragraph 2: Environmental conditions and Air Quality analysis (US EPA AQI, particulate safety, precipitation, wind).
+- Paragraph 3: Public precautions, active hazard guidance, and planning advice for citizens.
 Do not use bullet points. Write purely in clean, broadcast-ready journalistic prose.
 """
     call_log_entry["prompt"] = prompt
@@ -498,14 +695,20 @@ Do not use bullet points. Write purely in clean, broadcast-ready journalistic pr
             resp = client.chat.completions.create(
                 model=GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are a professional television meteorologist delivering weather news."},
+                    {"role": "system", "content": "You are a professional television meteorologist delivering grounded weather news."},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=650,
-                temperature=0.4,
+                temperature=0.3,
             )
-            report_text = resp.choices[0].message.content.strip()
-            llm_succeeded = True
+            candidate_text = resp.choices[0].message.content.strip()
+            if validate_report_grounding(candidate_text, canonical_payload):
+                report_text = candidate_text
+                llm_succeeded = True
+            else:
+                logger.warning("Groq WeatherReportAgent output failed grounding validation. Falling back to verified generator.")
+                report_text = generate_grounded_report(canonical_payload)
+                llm_succeeded = True
         except Exception as exc:
             logger.warning(f"Groq WeatherReportAgent error: {exc}. Utilizing deterministic fallback.")
             call_log_entry["status"] = "failed"
@@ -514,20 +717,8 @@ Do not use bullet points. Write purely in clean, broadcast-ready journalistic pr
     latency_ms = int((time.time() - start_time) * 1000)
     call_log_entry["latency_ms"] = latency_ms
 
-    if not llm_succeeded or not report_text:
-        # Deterministic Broadcast Script Fallback
-        hazard_note = f"Special weather statements remain active regarding {active_alerts[0]['description']}." if active_alerts else "Stable atmospheric patterns prevail with no severe alerts issued."
-        report_text = (
-            f"Good day, Islamabad. Here is your official 24-hour meteorological outlook. "
-            f"Temperatures across the capital region are projected to hold near {forecasts.get('temp_c')}°C over the next 24 hours, accompanied by humidity levels around {forecasts.get('humidity_pct')}%. "
-            f"Wind velocities are anticipated near {forecasts.get('wind_speed')} km/h, keeping the ambient conditions well-ventilated through the morning and afternoon hours.\n\n"
-            f"Turning to environmental and air quality readings, the regional Air Quality Index is trending near {forecasts.get('aqi')}. "
-            f"{'Particulate concentrations remain somewhat elevated, requiring caution during peak travel hours.' if forecasts.get('aqi', 0) > 100 else 'Air quality remains comfortably within moderate limits across the metropolitan area.'} "
-            f"Precipitation chances stand at {forecasts.get('rain_prob')}%, with expected hourly rainfall accumulations measuring approximately {forecasts.get('precip_mm')} millimeters.\n\n"
-            f"For commuters and outdoor workers, {hazard_note} "
-            f"The UV Index is forecast to peak at {forecasts.get('uv_index')}, meaning moderate sun protection is advised during midday hours. "
-            f"Stay tuned to the AgentWeather broadcast terminal for continuous automated hourly updates."
-        )
+    if not report_text:
+        report_text = generate_grounded_report(canonical_payload)
 
     call_log_entry["response"] = report_text
     state["weather_report"] = report_text
@@ -576,6 +767,10 @@ def save_audit_ledgers_to_hopsworks(state: AgentState):
             df_calls = pd.DataFrame(call_logs)
             df_calls["timestamp"] = pd.to_datetime(df_calls["timestamp"])
             df_calls["timestamp_epoch"] = (df_calls["timestamp"].astype("int64") // 10**6).astype("int64")
+            if "prompt" in df_calls.columns:
+                df_calls["prompt"] = df_calls["prompt"].astype(str).str.slice(0, 850)
+            if "response" in df_calls.columns:
+                df_calls["response"] = df_calls["response"].astype(str).str.slice(0, 1850)
 
             project = get_hopsworks_project()
             fs = project.get_feature_store()
@@ -621,6 +816,7 @@ def run_agent_pipeline(initial_df: Optional[pd.DataFrame] = None) -> AgentState:
     """
     Runs the complete 4-node agentic workflow:
     - Accepts optional DataFrame directly in memory from live ingestion to bypass offline/online sync lag.
+    - Preserves live observed telemetry snapshot in state.
     - Executes LangGraph pipeline.
     - Saves audit ledgers into Hopsworks.
     - Caches state locally for Streamlit UI consumption.
@@ -631,12 +827,23 @@ def run_agent_pipeline(initial_df: Optional[pd.DataFrame] = None) -> AgentState:
     now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     current_features = {}
+    observed = {}
     if initial_df is not None and not initial_df.empty:
         current_features = initial_df.iloc[-1].to_dict()
+        if hasattr(initial_df, "attrs") and "observed" in initial_df.attrs:
+            observed = initial_df.attrs["observed"]
+
+    if not observed:
+        live_df = ingest_live_row(city=CITY_NAME)
+        observed = live_df.attrs.get("observed", {})
+        if not current_features:
+            eng_df = build_engineered_features(live_df)
+            current_features = eng_df.iloc[-1].to_dict()
 
     initial_state: AgentState = {
         "city": CITY_NAME,
         "timestamp": now_iso,
+        "observed": observed,
         "current_features": current_features,
         "forecasts": {},
         "forecast_ledger_entries": [],
@@ -657,6 +864,7 @@ def run_agent_pipeline(initial_df: Optional[pd.DataFrame] = None) -> AgentState:
     state_to_cache = {
         "city": final_state["city"],
         "timestamp": final_state["timestamp"],
+        "observed": final_state.get("observed", {}),
         "forecasts": final_state["forecasts"],
         "forecast_ledger_entries": final_state["forecast_ledger_entries"],
         "active_alerts": final_state["active_alerts"],

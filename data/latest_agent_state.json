@@ -1,38 +1,58 @@
 {
   "city": "Islamabad",
-  "timestamp": "2026-11-13 07:32:46",
+  "timestamp": "2026-11-24 04:37:08",
+  "observed": {
+    "temp_c": 16.8,
+    "humidity_pct": 52,
+    "pressure_hpa": 959.0,
+    "wind_speed": 1.5,
+    "wind_dir": 263,
+    "precip_mm": 0.0,
+    "rain_prob": 0,
+    "uv_index": 2.2,
+    "cloud_cover": 55,
+    "aqi": 156.5,
+    "timestamp_utc": "2026-11-24 04:00:00 UTC",
+    "timestamp_pkt": "2026-11-24 09:00:00 PKT",
+    "is_live": true,
+    "source": "Open-Meteo Live API (Asia/Karachi) + OWM + AQICN",
+    "temp_max_24h": 22.1,
+    "temp_min_24h": 11.1
+  },
   "forecasts": {
-    "aqi": 30.93,
-    "temp_c": 24.84,
+    "aqi": 132.06,
+    "temp_c": 10.34,
     "precip_mm": 0.05,
-    "rain_prob": 22.26,
-    "humidity_pct": 24.57,
-    "uv_index": 0.17,
-    "wind_speed": 1.42,
-    "wind_dir": 129.06
+    "rain_prob": 0.77,
+    "humidity_pct": 71.4,
+    "uv_index": 4.02,
+    "wind_speed": 6.81,
+    "wind_dir": 216.88,
+    "temp_max_24h": 22.1,
+    "temp_min_24h": 11.1
   },
   "forecast_ledger_entries": [
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "aqi",
-      "predicted_value": 30.93,
+      "predicted_value": 132.06,
       "model_family": "Deep Learning (PyTorch LSTM)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "temp_c",
-      "predicted_value": 24.84,
+      "predicted_value": 10.34,
       "model_family": "Classical ML (Ridge)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "precip_mm",
       "predicted_value": 0.05,
       "model_family": "Statistical (ARIMA)",
@@ -40,61 +60,70 @@
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "rain_prob",
-      "predicted_value": 22.26,
+      "predicted_value": 0.77,
       "model_family": "Classical ML (Ridge)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "humidity_pct",
-      "predicted_value": 24.57,
+      "predicted_value": 71.4,
       "model_family": "Classical ML (Ridge)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "uv_index",
-      "predicted_value": 0.17,
+      "predicted_value": 4.02,
       "model_family": "Classical ML (LightGBM)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "wind_speed",
-      "predicted_value": 1.42,
+      "predicted_value": 6.81,
       "model_family": "Classical ML (Ridge)",
       "model_version": 1,
       "city": "Islamabad"
     },
     {
-      "forecast_created_at": "2026-11-13 07:32:46",
-      "target_timestamp": "2026-11-14 07:32:46",
+      "forecast_created_at": "2026-11-24 04:37:08",
+      "target_timestamp": "2026-11-25 04:37:08",
       "metric": "wind_dir",
-      "predicted_value": 129.06,
+      "predicted_value": 216.88,
       "model_family": "Classical ML (LightGBM)",
       "model_version": 1,
       "city": "Islamabad"
     }
   ],
-  "active_alerts": [],
+  "active_alerts": [
+    {
+      "metric": "aqi",
+      "value": 132.06,
+      "category": "Unhealthy for Sensitive Groups",
+      "threshold": "101 - 150 AQI",
+      "description": "US EPA AQI 132.1 is Unhealthy for Sensitive Groups (101 to 150)",
+      "reason": "Active advisory for children, elderly, and respiratory/cardiovascular patients."
+    }
+  ],
   "alert_advisories": {
-    "general": "- **Air Quality:** Excellent (AQI 30.93). No respiratory restrictions; safe for all outdoor activities.\n- **Hydration:** High priority. Humidity is critically low (24.57%) despite moderate temperature (24.84\u00b0C). Drink water regularly to prevent dehydration and dry mucous membranes.\n- **Commuting:** Clear conditions. Negligible precipitation (0.05 mm) and low wind (1.42 km/h) ensure safe driving and cycling. No visibility or traction hazards.\n- **UV Protection:** Minimal risk (UV 0.17). Standard sun protection is sufficient; no special UV precautions required.",
-    "sensitive": "- **Respiratory Health:** Air quality is safe. Asthma and cardiovascular patients can resume normal activity levels without medication adjustments for weather.\n- **Hydration & Mucosal Care:** Low humidity (24.57%) may exacerbate dry eyes, skin, and throat irritation. Use humidifiers indoors and apply moisturizers. Elderly and children should monitor fluid intake closely.\n- **Thermal Comfort:** Temperature is mild. No heat stress or cold stress risks identified.",
-    "outdoor": "- **Hydration Protocol:** Mandatory frequent water breaks. Low humidity (24.57%) increases insensible water loss. Ensure access to clean drinking water at all work sites.\n- **Personal Protective Equipment (PPE):** Standard PPE applies. No additional rain gear or high-visibility gear required due to clear skies and low wind.\n- **Work Schedule:** No weather-related work stoppages or delays required. Conditions are optimal for construction, delivery, and agricultural tasks."
+    "general": "",
+    "sensitive": "*   **Commuting:** No specific restrictions for healthy adults. Keep windows closed in vehicles if traffic congestion increases local particulate exposure.\n*   **Activities:** No need to reduce exertion. Standard UV Index (4.02) requires standard sun protection (sunscreen/hat) during peak hours.\n\n*   **Targeted Precautions:** Children, elderly, asthma sufferers, and those with cardiovascular conditions are at elevated risk.\n*   **Action:** **Limit strenuous outdoor activity.** Avoid prolonged outdoor exercise or heavy physical labor.\n*   **Indoor Safety:** Keep windows closed to prevent outdoor particulate matter from entering. Use air purifiers if available.\n*   **Medical:** Keep rescue inhalers or prescribed medications accessible. Consult a physician if experiencing shortness of breath or chest discomfort.",
+    "outdoor": "*   **Occupational Safety:** No mandatory N95 mask requirement as AQI is below 151.\n*   **Guidance:** Monitor personal symptoms closely. If experiencing respiratory distress, move to a filtered indoor area immediately.\n*   **Hydration:** Maintain adequate hydration, especially during the 24h peak temperature of 22.1 \u00b0C.\n*   **Breaks:** No mandatory scheduled breaks required by AQI threshold, but take breaks in shaded or indoor areas if feeling fatigued or symptomatic."
   },
-  "weather_report": "Good morning, Islamabad. As we begin this Thursday, November 13th, the capital is waking up to a crisp and remarkably clear sky, signaling a day of comfortable warmth without the usual autumnal chill. Temperatures are currently hovering around 24.8 degrees Celsius, providing a pleasant thermal environment that feels significantly milder than the recent trends. With relative humidity sitting at a low 24.5 percent, the air remains dry and light, ensuring that the perceived temperature aligns closely with the actual reading, offering a refreshing start to your morning commute.\n\nTurning to our environmental metrics, the air quality index stands at a healthy 30.9, which places us firmly in the \"Good\" category. This indicates that air pollution levels are at a minimum, and there is little to no risk for sensitive groups. With particulate matter levels remaining well within safe limits, you can breathe easy as you head out into the fresh air. The low humidity further aids in the dispersion of any minor pollutants, keeping the atmosphere clean and clear for all residents, particularly those with respiratory sensitivities who can enjoy the day without concern.\n\nLooking ahead to the rest of the day, there are no active weather warnings in effect, and the risk of precipitation is negligible at just 22 percent, with expected rainfall limited to a mere 0.05 millimeters. The UV index is currently low at 0.17, though it will likely rise as the sun climbs higher, so standard sun protection is still advised for prolonged outdoor exposure. Winds are calm at 1.4 kilometers per hour from the southeast, creating stable conditions ideal for outdoor activities, travel, and daily planning. We encourage you to take advantage of this serene weather window for any outdoor errands or leisure activities, as the forecast points to a smooth and uneventful day ahead.",
+  "weather_report": "Good morning, Islamabad. It is currently 9:37 AM on Tuesday, November 24th, and we are beginning our official 24-hour weather briefing. Right now, the city is sitting at a comfortable 16.8 degrees Celsius with 55 percent cloud cover overhead, creating a partially overcast sky rather than clear conditions. As we look ahead to the next 24 hours, the temperature will climb to a peak of 22.1 degrees Celsius during the day before dropping to an overnight low of 11.1 degrees Celsius. By this time tomorrow morning, the point forecast indicates the temperature will have settled at 10.3 degrees Celsius, signaling a crisp start to the next day.\n\nTurning to the environmental conditions, we are monitoring a significant shift in air quality metrics. While current readings stand at an AQI of 156.5, the forecast for the coming 24 hours projects an AQI of 132.1, which places the air in the \"Unhealthy for Sensitive Groups\" category according to US EPA standards. This level of particulate matter warrants caution for children, the elderly, and individuals with respiratory or cardiovascular conditions. On the meteorological front, the risk of precipitation is minimal, with only a 1 percent chance of rain and a total accumulation of just 0.1 millimeters. Winds are expected to pick up slightly, shifting to a southwest direction at 6.8 kilometers per hour, which may help disperse some of the stagnant air, though the UV index will remain moderate at 4.0.\n\nFor our viewers planning their day, we advise those in sensitive groups to limit prolonged outdoor exertion and consider wearing masks if they must be outside for extended periods. General citizens should stay hydrated and monitor their comfort levels as the temperature fluctuates between the daytime high of 22.1 degrees and the cooler overnight lows. With precipitation unlikely, outdoor activities remain feasible, but those with respiratory sensitivities should keep their medications on hand and stay indoors during peak pollution hours. Stay safe, stay informed, and we will continue to monitor these conditions throughout the day.",
   "drift_results": {
     "data_drift": {
-      "timestamp": "2026-11-13T07:32:48.137631+00:00",
+      "timestamp": "2026-11-24T04:37:12.302336+00:00",
       "drift_detected": true,
       "features_evaluated": 6,
       "drifted_features": [
@@ -145,7 +174,7 @@
       }
     },
     "model_drift": {
-      "timestamp": "2026-11-13T07:32:48.185653+00:00",
+      "timestamp": "2026-11-24T04:37:12.435545+00:00",
       "model_drift_detected": false,
       "metrics": {}
     },
@@ -153,21 +182,21 @@
   },
   "audit_call_logs": [
     {
-      "timestamp": "2026-11-13 07:32:46",
+      "timestamp": "2026-11-24 04:37:09",
       "agent_name": "AlertAgent",
-      "prompt": "You are the Chief Safety Meteorologist for Islamabad.\nReview these 24-hour weather predictions:\n- Air Quality Index (AQI): 30.93 (US EPA scale)\n- Temperature: 24.84 \u00b0C\n- Precipitation: 0.05 mm (Rain Probability: 22.26 %)\n- Humidity: 24.57 %\n- UV Index: 0.17\n- Wind: 1.42 km/h from 129.06 degrees\n\nActive Hazard Triggers: []\n\nProvide concise, highly actionable safety advisories separated strictly into these 3 sections:\n[GENERAL PUBLIC]\nConcise practical guidance for daily life, commuting, and standard activities.\n\n[SENSITIVE GROUPS]\nTargeted precautions for children, the elderly, asthma sufferers, and individuals with cardiovascular conditions.\n\n[OUTDOOR WORKERS]\nMandatory occupational safety guidance for construction laborers, delivery riders, and agricultural workers.\n",
-      "response": "[GENERAL PUBLIC]\n- **Air Quality:** Excellent (AQI 30.93). No respiratory restrictions; safe for all outdoor activities.\n- **Hydration:** High priority. Humidity is critically low (24.57%) despite moderate temperature (24.84\u00b0C). Drink water regularly to prevent dehydration and dry mucous membranes.\n- **Commuting:** Clear conditions. Negligible precipitation (0.05 mm) and low wind (1.42 km/h) ensure safe driving and cycling. No visibility or traction hazards.\n- **UV Protection:** Minimal risk (UV 0.17). Standard sun protection is sufficient; no special UV precautions required.\n\n[SENSITIVE GROUPS]\n- **Respiratory Health:** Air quality is safe. Asthma and cardiovascular patients can resume normal activity levels without medication adjustments for weather.\n- **Hydration & Mucosal Care:** Low humidity (24.57%) may exacerbate dry eyes, skin, and throat irritation. Use humidifiers indoors and apply moisturizers. Elderly and children should monitor fluid intake closely.\n- **Thermal Comfort:** Temperature is mild. No heat stress or cold stress risks identified.\n\n[OUTDOOR WORKERS]\n- **Hydration Protocol:** Mandatory frequent water breaks. Low humidity (24.57%) increases insensible water loss. Ensure access to clean drinking water at all work sites.\n- **Personal Protective Equipment (PPE):** Standard PPE applies. No additional rain gear or high-visibility gear required due to clear skies and low wind.\n- **Work Schedule:** No weather-related work stoppages or delays required. Conditions are optimal for construction, delivery, and agricultural tasks.",
-      "latency_ms": 1205,
+      "prompt": "You are the Chief Safety Meteorologist for Islamabad.\nReview these 24-hour weather predictions:\n- Air Quality Index (AQI): 132.06 (Unhealthy for Sensitive Groups per US EPA scale)\n- Temperature (t+24h): 10.34 \u00b0C (24h Peak: 22.1 \u00b0C, 24h Low: 11.1 \u00b0C)\n- Precipitation: 0.05 mm (Rain Probability: 0.77 %)\n- Humidity: 71.4 %\n- UV Index: 4.02\n- Wind: 6.81 km/h from 216.88 degrees\n\nActive Hazard Triggers: [{\"metric\": \"aqi\", \"value\": 132.06, \"category\": \"Unhealthy for Sensitive Groups\", \"threshold\": \"101 - 150 AQI\", \"description\": \"US EPA AQI 132.1 is Unhealthy for Sensitive Groups (101 to 150)\", \"reason\": \"Active advisory for children, elderly, and respiratory/cardiovascular patients.\"}]\n\nProvide concise, highly actionable safety advisories separated strictly into these 3 sections:\n[GENERAL PUBLIC]\nConcise practical guidance for daily life, commuting, and standard activities. If AQI is >= 151 (Unhealthy), advise reducing prolonged exertion and recommending masks if sensitive.\n\n[SENSITIVE GROUPS]\nTargeted precautions for children, the elderly, asthma sufferers, and individuals with cardiovascular conditions. If AQI is >= 101, advise limiting strenuous outdoor activity.\n\n[OUTDOOR WORKERS]\nMandatory occupational safety guidance for construction laborers, delivery riders, and agricultural workers. If AQI >= 151, recommend N95 masks and scheduled breaks.\n",
+      "response": "[GENERAL PUBLIC]\n*   **Daily Life:** Air quality is \"Unhealthy for Sensitive Groups.\" General population can continue normal activities, but monitor for symptoms.\n*   **Commuting:** No specific restrictions for healthy adults. Keep windows closed in vehicles if traffic congestion increases local particulate exposure.\n*   **Activities:** No need to reduce exertion. Standard UV Index (4.02) requires standard sun protection (sunscreen/hat) during peak hours.\n\n[SENSITIVE GROUPS]\n*   **Targeted Precautions:** Children, elderly, asthma sufferers, and those with cardiovascular conditions are at elevated risk.\n*   **Action:** **Limit strenuous outdoor activity.** Avoid prolonged outdoor exercise or heavy physical labor.\n*   **Indoor Safety:** Keep windows closed to prevent outdoor particulate matter from entering. Use air purifiers if available.\n*   **Medical:** Keep rescue inhalers or prescribed medications accessible. Consult a physician if experiencing shortness of breath or chest discomfort.\n\n[OUTDOOR WORKERS]\n*   **Occupational Safety:** No mandatory N95 mask requirement as AQI is below 151.\n*   **Guidance:** Monitor personal symptoms closely. If experiencing respiratory distress, move to a filtered indoor area immediately.\n*   **Hydration:** Maintain adequate hydration, especially during the 24h peak temperature of 22.1 \u00b0C.\n*   **Breaks:** No mandatory scheduled breaks required by AQI threshold, but take breaks in shaded or indoor areas if feeling fatigued or symptomatic.",
+      "latency_ms": 2069,
       "status": "success",
       "error_message": "",
       "city": "Islamabad"
     },
     {
-      "timestamp": "2026-11-13 07:32:58",
+      "timestamp": "2026-11-24 04:37:16",
       "agent_name": "WeatherReportAgent",
-      "prompt": "You are a television broadcast meteorologist delivering the official 24-hour weather forecast for Islamabad.\nCurrent Date/Time: 2026-11-13 07:32:58 UTC.\n\nKey Forecast Metrics for the next 24 Hours:\n- Temperature: 24.84 \u00b0C\n- Air Quality Index (AQI): 30.93\n- Precipitation: 0.05 mm (Rain Probability: 22.26 %)\n- Relative Humidity: 24.57 %\n- UV Index: 0.17\n- Wind: 1.42 km/h (129.06\u00b0)\n\nActive Warnings: []\n\nWrite a professional, compelling, 3-paragraph broadcast news script:\n- Paragraph 1: Headline and general weather outlook (temperature, sky conditions, feel).\n- Paragraph 2: Environmental conditions and Air Quality analysis (AQI, breathing safety, PM levels).\n- Paragraph 3: Hazard warnings, public precautions, and daily planning advice for citizens.\nDo not use bullet points. Write purely in clean, broadcast-ready journalistic prose.\n",
-      "response": "Good morning, Islamabad. As we begin this Thursday, November 13th, the capital is waking up to a crisp and remarkably clear sky, signaling a day of comfortable warmth without the usual autumnal chill. Temperatures are currently hovering around 24.8 degrees Celsius, providing a pleasant thermal environment that feels significantly milder than the recent trends. With relative humidity sitting at a low 24.5 percent, the air remains dry and light, ensuring that the perceived temperature aligns closely with the actual reading, offering a refreshing start to your morning commute.\n\nTurning to our environmental metrics, the air quality index stands at a healthy 30.9, which places us firmly in the \"Good\" category. This indicates that air pollution levels are at a minimum, and there is little to no risk for sensitive groups. With particulate matter levels remaining well within safe limits, you can breathe easy as you head out into the fresh air. The low humidity further aids in the dispersion of any minor pollutants, keeping the atmosphere clean and clear for all residents, particularly those with respiratory sensitivities who can enjoy the day without concern.\n\nLooking ahead to the rest of the day, there are no active weather warnings in effect, and the risk of precipitation is negligible at just 22 percent, with expected rainfall limited to a mere 0.05 millimeters. The UV index is currently low at 0.17, though it will likely rise as the sun climbs higher, so standard sun protection is still advised for prolonged outdoor exposure. Winds are calm at 1.4 kilometers per hour from the southeast, creating stable conditions ideal for outdoor activities, travel, and daily planning. We encourage you to take advantage of this serene weather window for any outdoor errands or leisure activities, as the forecast points to a smooth and uneventful day ahead.",
-      "latency_ms": 1028,
+      "prompt": "You are a television broadcast meteorologist delivering the official 24-hour weather forecast for Islamabad.\nYou must strictly follow these grounding rules:\n1. Ground greetings and time-of-day remarks in local time (2026-11-24 09:37:16 PKT, period: morning).\n2. Distinguish current observed conditions (16.8\u00b0C, 55% cloud cover) from the 24-hour forecast.\n3. If cloud_cover_pct is greater than 10%, DO NOT state the sky is \"unbroken by cloud\" or \"completely clear\". Report cloud cover as 55%.\n4. Clearly distinguish the 24h Peak Temperature (22.1\u00b0C) and Overnight Low (11.1\u00b0C) from the t+24h point forecast (10.3\u00b0C). Never call an overnight/morning low the \"Peak Temp\".\n5. Use the exact US EPA Air Quality category: 'Unhealthy for Sensitive Groups' for forecast AQI 132.1.\n6. Use exact numbers matching this canonical payload:\n{\n  \"city\": \"Islamabad\",\n  \"cycle_utc\": \"2026-11-24 04:37:16 UTC\",\n  \"local_time_pkt\": \"2026-11-24 09:37:16 PKT\",\n  \"day_period\": \"morning\",\n  \"observed\": {\n    \"temp_c\": 16.8,\n    \"humidity_pct\": 52,\n    \"pressure_hpa\": 959.0,\n    \"cloud_cover_pct\": 55,\n    \"wind_speed_kmh\": 1.5,\n    \"aqi\": 156.5,\n    \"aqi_category\": \"Unhealthy\"\n  },\n  \"forecast_24h\": {\n    \"temp_c\": 10.3,\n    \"temp_max_24h\": 22.1,\n    \"temp_min_24h\": 11.1,\n    \"humidity_pct\": 71,\n    \"precip_mm\": 0.1,\n    \"rain_prob_pct\": 1,\n    \"uv_index\": 4.0,\n    \"wind_speed_kmh\": 6.8,\n    \"wind_dir_deg\": 217,\n    \"aqi\": 132.1,\n    \"aqi_category\": \"Unhealthy for Sensitive Groups\"\n  },\n  \"active_alerts\": [\n    {\n      \"metric\": \"aqi\",\n      \"value\": 132.06,\n      \"category\": \"Unhealthy for Sensitive Groups\",\n      \"threshold\": \"101 - 150 AQI\",\n      \"description\": \"US EPA AQI 132.1 is Unhealthy for Sensitive Groups (101 to 150)\",\n      \"reason\": \"Active advisory for children, elderly, and respiratory/cardiovascular patients.\"\n    }\n  ]\n}\n\nWrite a professional, compelling, 3-paragraph broadcast news script:\n- Paragraph 1: Headline and general weather outlook (current temp, sky conditions, 24h Peak and Low temperatures).\n- Paragraph 2: Environmental conditions and Air Quality analysis (US EPA AQI, particulate safety, precipitation, wind).\n- Paragraph 3: Public precautions, active hazard guidance, and planning advice for citizens.\nDo not use bullet points. Write purely in clean, broadcast-ready journalistic prose.\n",
+      "response": "Good morning, Islamabad. It is currently 9:37 AM on Tuesday, November 24th, and we are beginning our official 24-hour weather briefing. Right now, the city is sitting at a comfortable 16.8 degrees Celsius with 55 percent cloud cover overhead, creating a partially overcast sky rather than clear conditions. As we look ahead to the next 24 hours, the temperature will climb to a peak of 22.1 degrees Celsius during the day before dropping to an overnight low of 11.1 degrees Celsius. By this time tomorrow morning, the point forecast indicates the temperature will have settled at 10.3 degrees Celsius, signaling a crisp start to the next day.\n\nTurning to the environmental conditions, we are monitoring a significant shift in air quality metrics. While current readings stand at an AQI of 156.5, the forecast for the coming 24 hours projects an AQI of 132.1, which places the air in the \"Unhealthy for Sensitive Groups\" category according to US EPA standards. This level of particulate matter warrants caution for children, the elderly, and individuals with respiratory or cardiovascular conditions. On the meteorological front, the risk of precipitation is minimal, with only a 1 percent chance of rain and a total accumulation of just 0.1 millimeters. Winds are expected to pick up slightly, shifting to a southwest direction at 6.8 kilometers per hour, which may help disperse some of the stagnant air, though the UV index will remain moderate at 4.0.\n\nFor our viewers planning their day, we advise those in sensitive groups to limit prolonged outdoor exertion and consider wearing masks if they must be outside for extended periods. General citizens should stay hydrated and monitor their comfort levels as the temperature fluctuates between the daytime high of 22.1 degrees and the cooler overnight lows. With precipitation unlikely, outdoor activities remain feasible, but those with respiratory sensitivities should keep their medications on hand and stay indoors during peak pollution hours. Stay safe, stay informed, and we will continue to monitor these conditions throughout the day.",
+      "latency_ms": 1662,
       "status": "success",
       "error_message": "",
       "city": "Islamabad"

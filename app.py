@@ -26,6 +26,8 @@ from src.config import (
     EDA_ARTIFACTS_DIR,
     HAZARD_THRESHOLDS,
     TARGET_METRICS,
+    classify_epa_aqi,
+    pm25_to_epa_aqi,
 )
 from src.features import ingest_live_row, build_engineered_features
 from src.agents import run_agent_pipeline
@@ -656,8 +658,16 @@ header[data-testid="stHeader"] {
 """, unsafe_allow_html=True)
 
 
-# Data Loaders
-@st.cache_data(ttl=60)
+# Clean HTML Rendering Helper (avoids Markdown parser treating tags as code)
+def render_html(content: str):
+    if hasattr(st, "html"):
+        st.html(content)
+    else:
+        st.markdown(content, unsafe_allow_html=True)
+
+
+# Data Loaders (Cached at 15m / 900s TTL)
+@st.cache_data(ttl=900)
 def load_cached_agent_state():
     state_file = DATA_DIR / "latest_agent_state.json"
     if state_file.exists():
@@ -666,7 +676,7 @@ def load_cached_agent_state():
     return None
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_historical_data():
     parquet_file = DATA_DIR / "historical_features.parquet"
     if parquet_file.exists():
@@ -676,7 +686,7 @@ def load_historical_data():
     return None
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=900)
 def load_training_metadata():
     tr_file = DATA_DIR / "training_results.json"
     if tr_file.exists():
@@ -700,25 +710,15 @@ def degrees_to_cardinal(deg: float) -> str:
 
 def _render_progress_bar(pct: float, fill_color: str) -> str:
     clamped = f"{min(100.0, max(0.0, pct)):.1f}"
-    return (
-        f'<div class="progress-track">'
-        f'<div class="progress-fill" style="width:{clamped}%;background:{fill_color};"></div>'
-        f'</div>'
-    )
+    return f'<div class="progress-track"><div class="progress-fill" style="width:{clamped}%;background:{fill_color};"></div></div>'
 
 
 METRIC_REGISTRY = {
     "aqi": {
         "name": "Air Quality Index",
         "unit": "AQI",
-        "eval_func": lambda v: (
-            ("Good", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Safe threshold below 150")
-            if v <= 50
-            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Advisory range 51 to 150")
-            if v <= 150
-            else ("Hazardous", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazardous above 150")
-        ),
-        "pct_func": lambda v: (v / 200.0) * 100.0,
+        "eval_func": classify_epa_aqi,
+        "pct_func": lambda v: min(100.0, (v / 300.0) * 100.0),
     },
     "temp_c": {
         "name": "Temperature",
@@ -875,19 +875,55 @@ cycle_timestamp = agent_state.get("timestamp", "N/A")
 city_name = agent_state.get("city", CITY_NAME)
 
 # Extract recent station telemetry
-if hist_df is not None and not hist_df.empty:
+observed_data = agent_state.get("observed") or {}
+if observed_data and observed_data.get("temp_c") is not None:
+    obs_temp = f"{float(observed_data['temp_c']):.1f}°C"
+    obs_press = f"{float(observed_data.get('pressure_hpa', 1013.2)):.1f} hPa"
+    obs_cloud = f"{round(float(observed_data.get('cloud_cover', 20)))}%"
+    obs_hum = f"{round(float(observed_data.get('humidity_pct', 50)))}%"
+    obs_aqi = f"{float(observed_data.get('aqi', 100)):.1f}"
+    obs_is_live = bool(observed_data.get("is_live", True))
+    obs_source = observed_data.get("source", "Open-Meteo Live API")
+elif hist_df is not None and not hist_df.empty:
     latest_row = hist_df.iloc[-1]
-    latest_telemetry = {
-        "pressure": f"{latest_row.get('pressure_hpa', 1013.2):.1f} hPa",
-        "cloud_cover": f"{round(latest_row.get('cloud_cover', 20))}%",
-        "current_temp": f"{latest_row.get('temp_c', 18.0):.1f}°C",
-    }
+    obs_temp = f"{float(latest_row.get('temp_c', 16.8)):.1f}°C"
+    obs_press = f"{float(latest_row.get('pressure_hpa', 1013.2)):.1f} hPa"
+    obs_cloud = f"{round(float(latest_row.get('cloud_cover', 20)))}%"
+    obs_hum = f"{round(float(latest_row.get('humidity_pct', 50)))}%"
+    obs_aqi = f"{float(latest_row.get('aqi', 100)):.1f}"
+    obs_is_live = False
+    obs_source = "Historical Parquet"
 else:
-    latest_telemetry = {
-        "pressure": "1013.2 hPa",
-        "cloud_cover": "20%",
-        "current_temp": "24.8°C",
-    }
+    obs_temp = "16.8°C"
+    obs_press = "1013.2 hPa"
+    obs_cloud = "20%"
+    obs_hum = "50%"
+    obs_aqi = "100.0"
+    obs_is_live = False
+    obs_source = "Static Fallback"
+
+# Pipeline Freshness Check (Bug 5: banner if > 6 hours old)
+stale_warning_banner = ""
+if cycle_timestamp and cycle_timestamp != "N/A":
+    try:
+        cycle_dt = pd.to_datetime(cycle_timestamp)
+        if cycle_dt.tzinfo is None:
+            cycle_dt = cycle_dt.tz_localize("UTC")
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        age_hours = (now_utc - cycle_dt).total_seconds() / 3600.0
+        if age_hours > 6.0:
+            stale_warning_banner = (
+                f'<div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); '
+                f'border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 16px; font-size: 12.5px; '
+                f'color: #F59E0B; display: flex; align-items: center; justify-content: space-between;">'
+                f'<span><b>STALE DATA PIPELINE:</b> Last forecast cycle completed {age_hours:.1f} hours ago '
+                f'({cycle_timestamp} UTC). Live observations may differ from cached projections.</span>'
+                f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 11px; background: rgba(245, 158, 11, 0.20); '
+                f'padding: 2px 8px; border-radius: 4px;">CACHED INFERENCE</span>'
+                f'</div>'
+            )
+    except Exception:
+        pass
 
 n_alerts = len(active_alerts)
 if n_alerts == 0:
@@ -964,7 +1000,16 @@ with st.sidebar:
 
 
 # Top Header Bar
-st.markdown(f"""
+if stale_warning_banner:
+    render_html(stale_warning_banner)
+
+telemetry_status_chip = (
+    '<span class="telemetry-chip" style="color: #10B981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.10); font-weight: 600;">LIVE TELEMETRY (Asia/Karachi)</span>'
+    if obs_is_live
+    else '<span class="telemetry-chip" style="color: #F59E0B; border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.10); font-weight: 600;">STALE / FALLBACK</span>'
+)
+
+render_html(f"""
 <div class="top-header-panel">
     <div class="top-header-main">
         <div>
@@ -980,37 +1025,38 @@ st.markdown(f"""
         </div>
     </div>
     <div class="telemetry-strip">
-        <span class="telemetry-chip">Observed Temp: <strong>{latest_telemetry['current_temp']}</strong></span>
-        <span class="telemetry-chip">Barometric Pressure: <strong>{latest_telemetry['pressure']}</strong></span>
-        <span class="telemetry-chip">Cloud Cover: <strong>{latest_telemetry['cloud_cover']}</strong></span>
+        <span class="telemetry-chip">Observed Temp: <strong>{obs_temp}</strong></span>
+        <span class="telemetry-chip">Barometric Pressure: <strong>{obs_press}</strong></span>
+        <span class="telemetry-chip">Humidity: <strong>{obs_hum}</strong></span>
+        <span class="telemetry-chip">Cloud Cover: <strong>{obs_cloud}</strong></span>
         <span class="telemetry-chip">Station Elevation: <strong>527m ASL</strong></span>
+        {telemetry_status_chip}
     </div>
 </div>
-""", unsafe_allow_html=True)
+""")
 
 
 def render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note):
     pct = cfg["pct_func"](val)
     bar_html = _render_progress_bar(pct, text_col)
-    parts = [
-        '<div class="metric-tile">',
-        '<div class="metric-tile-top">',
-        f'<span class="metric-tile-label">{cfg["name"]}</span>',
-        f'<span class="metric-pill" style="color:{text_col};background:{bg_col};border-color:{bdr_col};">{status_label}</span>',
-        '</div>',
-        '<div class="metric-reading">',
-        f'<span class="metric-val">{display_number}</span>',
-        f'<span class="metric-unit-text">{display_unit}</span>',
-        '</div>',
-        bar_html,
-        f'<div class="metric-note">{note}</div>',
-        '</div>',
-    ]
-    return "".join(parts)
+    return (
+        f'<div class="metric-tile">'
+        f'<div class="metric-tile-top">'
+        f'<span class="metric-tile-label">{cfg["name"]}</span>'
+        f'<span class="metric-pill" style="color:{text_col};background:{bg_col};border-color:{bdr_col};">{status_label}</span>'
+        f'</div>'
+        f'<div class="metric-reading">'
+        f'<span class="metric-val">{display_number}</span>'
+        f'<span class="metric-unit-text">{display_unit}</span>'
+        f'</div>'
+        f'{bar_html}'
+        f'<div class="metric-note">{note}</div>'
+        f'</div>'
+    )
 
 
 # Section 1: 24 Hour Predictive Metrics Grid
-st.markdown('<div class="section-label">24 Hour Forecast</div>', unsafe_allow_html=True)
+render_html('<div class="section-label">24 Hour Forecast</div>')
 
 keys_row1 = ["aqi", "temp_c", "precip_mm", "rain_prob"]
 keys_row2 = ["humidity_pct", "uv_index", "wind_speed", "wind_dir"]
@@ -1021,12 +1067,11 @@ for col, key in zip(cols_r1, keys_row1):
     val = float(forecasts.get(key) or 0.0)
     status_label, text_col, bg_col, bdr_col, note = cfg["eval_func"](val)
     with col:
-        st.markdown(
-            render_metric_card(cfg, val, f"{val:.1f}", cfg["unit"], text_col, bg_col, bdr_col, status_label, note),
-            unsafe_allow_html=True,
+        render_html(
+            render_metric_card(cfg, val, f"{val:.1f}", cfg["unit"], text_col, bg_col, bdr_col, status_label, note)
         )
 
-st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+render_html("<div style='height:12px;'></div>")
 
 cols_r2 = st.columns(4)
 for col, key in zip(cols_r2, keys_row2):
@@ -1040,28 +1085,29 @@ for col, key in zip(cols_r2, keys_row2):
         display_number = f"{val:.1f}"
         display_unit = cfg["unit"]
     with col:
-        st.markdown(
-            render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note),
-            unsafe_allow_html=True,
+        render_html(
+            render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note)
         )
 
 
 # Section 2: Meteorological Briefing and Audience Advisories
-st.markdown('<div class="section-label">Weather Briefing and Advisories</div>', unsafe_allow_html=True)
+render_html('<div class="section-label">Weather Briefing and Advisories</div>')
 
 col_briefing, col_advisory = st.columns([3, 2], gap="medium")
 
 with col_briefing:
-    temp_val = float(forecasts.get("temp_c") or 24.8)
-    hum_val = float(forecasts.get("humidity_pct") or 24.6)
-    aqi_val = float(forecasts.get("aqi") or 30.9)
-    rain_val = float(forecasts.get("rain_prob") or 22.3)
+    temp_max_val = float(forecasts.get("temp_max_24h") or (forecasts.get("temp_c", 22.0) + 4.0))
+    temp_min_val = float(forecasts.get("temp_min_24h") or (forecasts.get("temp_c", 15.0) - 4.0))
+    temp_val = float(forecasts.get("temp_c") or 16.8)
+    hum_val = float(forecasts.get("humidity_pct") or 52.0)
+    aqi_val = float(forecasts.get("aqi") or 132.0)
+    rain_val = float(forecasts.get("rain_prob") or 0.0)
 
     report_text = agent_state.get("weather_report", "Weather briefing currently in compilation.")
     paragraphs = [p.strip() for p in report_text.split("\n\n") if p.strip()]
     paragraphs_html = "".join([f"<p>{p}</p>" for p in paragraphs])
 
-    st.markdown(f"""
+    render_html(f"""
     <div class="surface-panel">
         <div class="panel-header">
             <span class="panel-title">Weather Briefing</span>
@@ -1072,7 +1118,9 @@ with col_briefing:
                 Atmospheric outlook across Islamabad for the upcoming 24 hour forecast window.
             </div>
             <div class="briefing-chips">
-                <span class="briefing-chip">Peak Temp: {temp_val:.1f}°C</span>
+                <span class="briefing-chip">Day High: {temp_max_val:.1f}°C</span>
+                <span class="briefing-chip">Night Low: {temp_min_val:.1f}°C</span>
+                <span class="briefing-chip">T+24h Outlook: {temp_val:.1f}°C</span>
                 <span class="briefing-chip">Humidity: {hum_val:.1f}%</span>
                 <span class="briefing-chip">Air Quality: {aqi_val:.1f} AQI</span>
                 <span class="briefing-chip">Rain Risk: {rain_val:.1f}%</span>
@@ -1082,7 +1130,7 @@ with col_briefing:
             {paragraphs_html}
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 with col_advisory:
     st.markdown("""
