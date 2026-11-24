@@ -373,12 +373,15 @@ header[data-testid="stHeader"] {
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    padding: 16px 18px;
-    min-height: 144px;
+    padding: 13px 14px;
+    min-height: 138px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     transition: border-color 0.15s ease, background-color 0.15s ease;
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
 }
 
 .metric-tile:hover {
@@ -390,37 +393,52 @@ header[data-testid="stHeader"] {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
 }
 
 .metric-tile-label {
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .metric-pill {
     display: inline-flex;
     align-items: center;
-    font-size: 10.5px;
+    justify-content: center;
+    font-size: 9.5px;
     font-weight: 600;
-    padding: 2px 8px;
+    padding: 1.5px 6px;
     border-radius: var(--radius-sm);
     border: 1px solid;
     white-space: nowrap;
+    flex-shrink: 0;
+    max-width: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
 }
 
 .metric-reading {
-    margin: 8px 0 6px;
+    margin: 6px 0 4px;
     display: flex;
     align-items: baseline;
-    gap: 6px;
+    gap: 5px;
+    width: 100%;
+    overflow: hidden;
 }
 
 .metric-val {
-    font-size: 27px;
+    font-size: 26px;
     font-weight: 700;
     color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
@@ -430,7 +448,7 @@ header[data-testid="stHeader"] {
 }
 
 .metric-unit-text {
-    font-size: 12.5px;
+    font-size: 11.5px;
     font-weight: 500;
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
@@ -441,7 +459,7 @@ header[data-testid="stHeader"] {
     height: 3px;
     border-radius: 2px;
     background: var(--bg-elevated);
-    margin: 6px 0 8px;
+    margin: 6px 0 6px;
     overflow: hidden;
 }
 
@@ -451,11 +469,12 @@ header[data-testid="stHeader"] {
 }
 
 .metric-note {
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.3;
 }
 
 /* Content Panels (Briefing and Advisories) */
@@ -715,7 +734,7 @@ def _render_progress_bar(pct: float, fill_color: str) -> str:
 
 METRIC_REGISTRY = {
     "aqi": {
-        "name": "Air Quality Index",
+        "name": "Air Quality",
         "unit": "AQI",
         "eval_func": classify_epa_aqi,
         "pct_func": lambda v: min(100.0, (v / 300.0) * 100.0),
@@ -724,11 +743,11 @@ METRIC_REGISTRY = {
         "name": "Temperature",
         "unit": "°C",
         "eval_func": lambda v: (
-            ("Extreme", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazard below 0°C or above 40°C")
+            ("Extreme", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazard: < 0°C or > 40°C")
             if v < 0 or v > 40
-            else ("Advisory", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Advisory below 12°C or above 34°C")
+            else ("Advisory", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Advisory: < 12°C or > 34°C")
             if v < 12 or v > 34
-            else ("Nominal", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Comfort range 12°C to 34°C")
+            else ("Nominal", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Safe comfort: 12° to 34°C")
         ),
         "pct_func": lambda v: ((v + 5.0) / 45.0) * 100.0,
     },
@@ -736,37 +755,37 @@ METRIC_REGISTRY = {
         "name": "Precipitation",
         "unit": "mm",
         "eval_func": lambda v: (
-            ("Heavy Rain", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazard threshold above 20 mm")
+            ("Heavy Rain", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Heavy rain > 20 mm")
             if v > 20
-            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Accumulation 2.5 to 20 mm")
+            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Moderate: 2.5 to 20 mm")
             if v >= 2.5
-            else ("Dry", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Minimal accumulation below 2.5 mm")
+            else ("Dry", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Dry (< 2.5 mm)")
         ),
         "pct_func": lambda v: (v / 25.0) * 100.0,
     },
     "rain_prob": {
-        "name": "Rain Probability",
+        "name": "Rain Risk",
         "unit": "%",
         "eval_func": lambda v: (
-            ("High Risk", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "High likelihood above 75%")
+            ("High Risk", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "High risk > 75%")
             if v > 75
-            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Chance of rain 30% to 75%")
+            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Chance: 30% to 75%")
             if v >= 30
-            else ("Low Risk", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Rain unlikely below 30%")
+            else ("Low Risk", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Rain unlikely (< 30%)")
         ),
         "pct_func": lambda v: v,
     },
     "humidity_pct": {
-        "name": "Relative Humidity",
+        "name": "Humidity",
         "unit": "%",
         "eval_func": lambda v: (
-            ("Critical", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Critical limit below 20% or above 85%")
+            ("Critical", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Extreme: < 20% or > 85%")
             if v < 20 or v > 85
-            else ("Dry Air", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Low hydration advisory below 30%")
+            else ("Dry Air", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Dry air (< 30%)")
             if v < 30
-            else ("High Moisture", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Humid advisory above 70%")
+            else ("High Moisture", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Humid air (> 70%)")
             if v > 70
-            else ("Comfortable", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Optimal comfort 30% to 70%")
+            else ("Comfortable", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Optimal: 30% to 70%")
         ),
         "pct_func": lambda v: v,
     },
@@ -774,11 +793,11 @@ METRIC_REGISTRY = {
         "name": "UV Index",
         "unit": "UV",
         "eval_func": lambda v: (
-            ("Very High", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazardous index 8.0 or above")
+            ("Very High", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "Hazardous index >= 8.0")
             if v >= 8
-            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Moderate exposure 3.0 to 7.9")
+            else ("Moderate", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Moderate: 3.0 to 7.9")
             if v >= 3
-            else ("Low", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Low solar radiation below 3.0")
+            else ("Low", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Low exposure (< 3.0)")
         ),
         "pct_func": lambda v: (v / 12.0) * 100.0,
     },
@@ -786,11 +805,11 @@ METRIC_REGISTRY = {
         "name": "Wind Speed",
         "unit": "km/h",
         "eval_func": lambda v: (
-            ("High Wind", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "High wind hazard above 50 km/h")
+            ("High Wind", "#EF4444", "rgba(239, 68, 68, 0.10)", "rgba(239, 68, 68, 0.25)", "High wind hazard > 50 km/h")
             if v > 50
-            else ("Breezy", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Moderate breeze 20 to 50 km/h")
+            else ("Breezy", "#F59E0B", "rgba(245, 158, 11, 0.10)", "rgba(245, 158, 11, 0.25)", "Moderate: 20 to 50 km/h")
             if v >= 20
-            else ("Calm", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Light breeze below 20 km/h")
+            else ("Calm", "#10B981", "rgba(16, 185, 129, 0.10)", "rgba(16, 185, 129, 0.25)", "Light to calm (< 20 km/h)")
         ),
         "pct_func": lambda v: (v / 50.0) * 100.0,
     },
@@ -802,7 +821,7 @@ METRIC_REGISTRY = {
             "#38BDF8",
             "rgba(56, 189, 248, 0.10)",
             "rgba(56, 189, 248, 0.25)",
-            f"Bearing {degrees_to_cardinal(v)} from North",
+            f"Bearing {degrees_to_cardinal(v)}",
         ),
         "pct_func": lambda v: (v / 360.0) * 100.0,
     },
@@ -1036,21 +1055,35 @@ render_html(f"""
 """)
 
 
+def compact_status_label(label: str) -> str:
+    """Provides crisp, non-overflowing status tags for compact cards."""
+    compact_map = {
+        "Unhealthy for Sensitive Groups": "Sensitive",
+        "Very Unhealthy": "Very Unhealthy",
+        "Comfortable": "Optimal",
+        "High Moisture": "Humid",
+        "Moderate exposure": "Moderate",
+        "Minimal accumulation": "Dry",
+    }
+    return compact_map.get(label, label)
+
+
 def render_metric_card(cfg, val, display_number, display_unit, text_col, bg_col, bdr_col, status_label, note):
     pct = cfg["pct_func"](val)
     bar_html = _render_progress_bar(pct, text_col)
+    badge_label = compact_status_label(status_label)
     return (
         f'<div class="metric-tile">'
         f'<div class="metric-tile-top">'
-        f'<span class="metric-tile-label">{cfg["name"]}</span>'
-        f'<span class="metric-pill" style="color:{text_col};background:{bg_col};border-color:{bdr_col};">{status_label}</span>'
+        f'<span class="metric-tile-label" title="{cfg["name"]}">{cfg["name"]}</span>'
+        f'<span class="metric-pill" title="{status_label}" style="color:{text_col};background:{bg_col};border-color:{bdr_col};">{badge_label}</span>'
         f'</div>'
         f'<div class="metric-reading">'
         f'<span class="metric-val">{display_number}</span>'
         f'<span class="metric-unit-text">{display_unit}</span>'
         f'</div>'
         f'{bar_html}'
-        f'<div class="metric-note">{note}</div>'
+        f'<div class="metric-note" title="{note}">{note}</div>'
         f'</div>'
     )
 

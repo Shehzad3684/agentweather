@@ -125,7 +125,7 @@ def classify_epa_aqi(v: float):
             "#FB923C",
             "rgba(251, 146, 60, 0.10)",
             "rgba(251, 146, 60, 0.25)",
-            "Unhealthy for Sensitive Groups: 101 to 150",
+            "101 to 150: Sensitive Groups",
         )
     elif val <= 200.0:
         return (
